@@ -1,9 +1,12 @@
 
 
 ```python
-                        # Cap nhat lich su (dung updated_messages tu service)
-                        updated = res.get("updated_messages", [])
-                        if updated:
-                            # Chi luu user messages va assistant messages co content text
-                            _conversation_history[sender_id] = [
-                               
+    # 2. Khách hỏi xem toàn bộ ảnh Áo hoặc xem mẫu chung
+    elif tu_khoa_lower in ("áo", "ao") or any(k in tu_khoa_lower for k in ["mẫu áo", "ảnh áo", "áo thun", "xem áo", "cac mau ao", "các mẫu áo"]):
+        image_urls = ALL_ANH_AO
+```
+
+```python
+    # Nếu hỏi chung về áo — keyword đủ dài để tránh match nhầm
+    elif any(k in lower_user for k in ["xem ảnh áo", "ảnh áo", "mẫu áo", "xem mẫu áo", "cac mau ao", "các mẫu áo", "xem áo", "gửi áo", "mua áo"]):
+```

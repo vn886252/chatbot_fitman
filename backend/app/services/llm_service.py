@@ -175,7 +175,7 @@ async def generate_response(messages: List[Dict[str, Any]], user_message: str) -
                 suggested_images.append(q_img)
 
     # Nếu hỏi chung về áo — keyword đủ dài để tránh match nhầm
-    elif any(k in lower_user for k in ["xem ảnh áo", "ảnh áo", "mẫu áo", "xem mẫu áo", "cac mau ao", "các mẫu áo"]):
+    elif any(k in lower_user for k in ["xem ảnh áo", "ảnh áo", "mẫu áo", "xem mẫu áo", "cac mau ao", "các mẫu áo", "xem áo", "gửi áo", "mua áo"]):
         for a_img in ALL_ANH_AO:
             if a_img not in suggested_images:
                 suggested_images.append(a_img)

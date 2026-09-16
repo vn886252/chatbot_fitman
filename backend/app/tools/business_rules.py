@@ -73,7 +73,7 @@ def tim_anh_san_pham(ma_san_pham_hoac_tu_khoa: str) -> Dict[str, Any]:
             image_urls = ALL_ANH_QUAN
 
     # 2. Khách hỏi xem toàn bộ ảnh Áo hoặc xem mẫu chung
-    elif any(k in tu_khoa_lower for k in ["mẫu áo", "ảnh áo", "áo thun", "xem áo", "cac mau ao", "các mẫu áo"]):
+    elif tu_khoa_lower in ("áo", "ao") or any(k in tu_khoa_lower for k in ["mẫu áo", "ảnh áo", "áo thun", "xem áo", "cac mau ao", "các mẫu áo"]):
         image_urls = ALL_ANH_AO
 
     # 3. Khách hỏi bảng size
