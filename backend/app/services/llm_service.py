@@ -1,4 +1,5 @@
 import os
+import re
 import json
 import asyncio
 import logging
@@ -152,11 +153,23 @@ async def generate_response(messages: List[Dict[str, Any]], user_message: str) -
             full_messages.append(assistant_msg)
             reply_text = assistant_msg.get("content", "")
 
+    # Strip markdown image links khỏi reply_text (safety net - LLM đôi khi vẫn tự thêm)
+    # Pattern: ![text](url) hoặc ![text]([url](url2))
+    reply_text = re.sub(r'!\[.*?\]\(.*?\)', '', reply_text).strip()
+    # Xóa dòng trống thừa sau khi strip
+    reply_text = re.sub(r'\n{3,}', '\n\n', reply_text).strip()
+
     # Bổ sung ảnh từ keyword trong câu chat (chỉ khi keyword rõ ràng, tránh false positive)
     lower_user = user_message.lower()
 
+    # Nếu hỏi xem tất cả (cả áo lẫn quần)
+    if any(k in lower_user for k in ["tất cả", "tat ca", "hết", "het", "xem hết", "all"]):
+        for img in ALL_ANH_AO + ALL_ANH_QUAN:
+            if img not in suggested_images:
+                suggested_images.append(img)
+
     # Nếu hỏi chung về quần — keyword đủ dài để tránh match nhầm
-    if any(k in lower_user for k in ["xem ảnh quần", "ảnh quần", "mẫu quần", "xem mẫu quần"]):
+    elif any(k in lower_user for k in ["xem ảnh quần", "ảnh quần", "mẫu quần", "xem mẫu quần"]):
         for q_img in ALL_ANH_QUAN:
             if q_img not in suggested_images:
                 suggested_images.append(q_img)
