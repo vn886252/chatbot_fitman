@@ -1,5 +1,5 @@
 import logging
-from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi import APIRouter, Request, Response
 from fastapi.responses import PlainTextResponse
 from app.config import settings
 from app.services.llm_service import generate_response
@@ -9,14 +9,24 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 @router.get("/webhook")
-async def verify_webhook(
-    hub_mode: str = Query(None, alias="hub.mode"),
-    hub_verify_token: str = Query(None, alias="hub.verify_token"),
-    hub_challenge: str = Query(None, alias="hub.challenge")
-):
+async def verify_webhook(request: Request):
+    """
+    Xác thực Facebook Messenger Webhook
+    Facebook gửi: GET /webhook?hub.mode=subscribe&hub.challenge=...&hub.verify_token=...
+    """
+    params = request.query_params
+    hub_mode = params.get("hub.mode")
+    hub_verify_token = params.get("hub.verify_token")
+    hub_challenge = params.get("hub.challenge")
+
+    logger.info(f"Received webhook verification: mode={hub_mode}, token={hub_verify_token}, challenge={hub_challenge}")
+
     if hub_mode == "subscribe" and hub_verify_token == settings.FB_VERIFY_TOKEN:
-        return PlainTextResponse(content=hub_challenge or "", status_code=200)
-    raise HTTPException(status_code=403, detail="Verification failed: token mismatch")
+        logger.info("Webhook verification successful!")
+        return Response(content=str(hub_challenge or ""), media_type="text/plain", status_code=200)
+
+    logger.warning(f"Webhook verification failed! Expected token: {settings.FB_VERIFY_TOKEN}, got: {hub_verify_token}")
+    return Response(content="Verification failed: token mismatch", media_type="text/plain", status_code=403)
 
 @router.post("/webhook")
 async def handle_webhook(request: Request):
