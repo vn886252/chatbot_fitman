@@ -1,0 +1,20 @@
+# Virtual Environment
+venv/
+.venv/
+env/
+
+# Python Cache
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+
+# Environment Variables (Bảo mật - KHÔNG đẩy lên GitHub)
+.env
+
+# OS Files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log

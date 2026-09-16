@@ -1,0 +1,115 @@
+{
+  "brand_info": {
+    "name": "FITMAN",
+    "slogan": "Đồ tập Gym Oversize chuẩn form CBUM"
+  },
+  "size_chart_image": "/static/products/bang_size.jpg",
+  "categories": {
+    "ao_oversize": {
+      "name": "Áo Thun Gym Oversize",
+      "groups": [
+        {
+          "image_url": "/static/products/nhom_1.jpg",
+          "description": "Áo oversize CBUM - Dòng sản phẩm nổi bật với thiết kế oversize, chất liệu thun co giãn tốt, phù hợp cho hoạt động thể thao và thời trang hàng ngày.",
+          "item_codes": [
+            4,
+            5,
+            1,
+            6,
+            15,
+            20,
+            17,
+            16,
+            19
+          ]
+        },
+        {
+          "image_url": "/static/products/nhom_2.jpg",
+          "description": "Áo oversize CBUM - Thiết kế đa dạng, chất liệu thoáng mát, dễ phối đồ, phù hợp với nhiều phong cách cá nhân.",
+          "item_codes": [
+            9,
+            10,
+            11,
+            12,
+            3,
+            8,
+            14,
+            2,
+            7
+          ]
+        },
+        {
+          "image_url": "/static/products/nhom_4.jpg",
+          "description": "Áo oversize Skull Punisher & Wolves - Phong cách mạnh mẽ, thiết kế độc đáo, phù hợp với người yêu thích phong cách punk và streetwear.",
+          "item_codes": [
+            "Nâu",
+            "Trắng",
+            "Đen",
+            "Be",
+            "W1",
+            "W2",
+            28,
+            "W7",
+            29
+          ]
+        },
+        {
+          "image_url": "/static/products/nhom_5.jpg",
+          "description": "Áo Champion 43 / Thavage / Big Boi & Quần Short - Kết hợp giữa chất liệu cao cấp và thiết kế thời trang, phù hợp với nhiều hoạt động thể thao và thời trang.",
+          "item_codes": [
+            34,
+            36,
+            35,
+            39,
+            31,
+            30,
+            32
+          ]
+        },
+        {
+          "image_url": "/static/products/nhom_6.jpg",
+          "description": "Áo CBUM Olympia / Never Quitting - Dòng sản phẩm thể thao với thiết kế năng động, chất liệu bền bỉ, hỗ trợ tối đa cho các hoạt động tập luyện.",
+          "item_codes": [
+            43,
+            44,
+            45,
+            46,
+            47
+          ]
+        }
+      ]
+    },
+    "quan_short_gym": {
+      "name": "Quần Đùi Tập Gym Cbum",
+      "groups": [
+        {
+          "image_url": "/static/products/nhom_3.jpg",
+          "description": "Quần đùi tập gym CBUM Short - Thiết kế gọn gàng, chất liệu co giãn tốt, hỗ trợ tối đa cho các bài tập thể dục và hoạt động hàng ngày.",
+          "item_codes": [
+            1,
+            2,
+            3,
+            4
+          ]
+        },
+        {
+          "image_url": "/static/products/nhom_5.jpg",
+          "description": "Quần Short - Kết hợp giữa chất liệu cao cấp và thiết kế thời trang, phù hợp với nhiều hoạt động thể thao và thời trang.",
+          "item_codes": [
+            "Q6",
+            "Q7"
+          ]
+        }
+      ]
+    }
+  },
+  "pricing_policy": {
+    "price_per_item": 150000,
+    "shipping_fee": {
+      "per_item": 30000,
+      "free_shipping_threshold_1": 300000,
+      "free_shipping_threshold_2": 400000,
+      "combo_discount": 130000
+    }
+  }
+}
