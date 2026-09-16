@@ -1,42 +1,13 @@
-### FILE: backend/app/prompts/system_prompt.py
-```
-# ... (nội dung trước) ...
 
-**TOOL CALLING**
 
-- Khi goi tool, chi goi cac tool da duoc danh sach trong system prompt.
-- **CHU Y**: TUYET DOI KHONG viet markdown image link (![...](url)) trong cau tra loi. Anh se duoc gui rieng qua API. Chi tra loi bang van ban thuan tuy.
+**DOAN 1:**
 
-# ... (nội dung sau) ...
-```
+- Khi khách hỏi nhiều mã sản phẩm khác nhau (VD: "áo mã 3 và áo mã 4"), **bắt buộc** gọi `tim_anh_san_pham` **riêng biệt** cho từng mã (gọi 2 lần: lần 1 với "3", lần 2 với "4").
+- **Không** gộp nhiều mã vào 1 lần gọi.
 
-### FILE: backend/app/tools/business_rules.py
-```python
-# ... (nội dung trước) ...
+**DOAN 2:**
 
-def tim_anh_san_pham(tu_khoa, image_urls):
-    # ... (các dòng trước) ...
-    
-    # Xu ly "quan mau N" truoc khi check tung tu
-    tu_khoa_lower = tu_khoa.lower()
-    if "quan mau 1" in tu_khoa_lower or "mau quan 1" in tu_khoa_lower:
-        tu_khoa_lower = "Q1"
-    elif "quan mau 2" in tu_khoa_lower:
-        tu_khoa_lower = "Q2"
-    elif "quan mau 3" in tu_khoa_lower:
-        tu_khoa_lower = "Q3"
-    elif "quan mau 4" in tu_khoa_lower:
-        tu_khoa_lower = "Q4"
-    elif "quan mau 6" in tu_khoa_lower or "q6" in tu_khoa_lower:
-        tu_khoa_lower = "Q6"
-    elif "quan mau 7" in tu_khoa_lower or "q7" in tu_khoa_lower:
-        tu_khoa_lower = "Q7"
-    
-    # ... (các dòng sau) ...
-
-    # Bo qua false positive "ao"
-    # if not image_urls and any(k in tu_khoa_lower for k in ["ao", "ao", "cbum", "mau", "mau", "xem anh"]):
-    #     image_urls = ALL_ANH_AO
-
-    # ... (các dòng sau) ...
-```
+- **Upsell 1 món → 2 món:** "Dạ anh mua thêm 1 [áo/quần] nữa freeship luôn anh ơi, chỉ 300k cho 2 món!"
+- **Upsell 3 món → 4 món:** "Dạ anh lấy thêm 1 [áo/quần] nữa chỉ 130k thêm thôi ạ, combo 4 món 530k rất hời!"
+- **Cross-sell:** Khách chỉ mua áo → offer thêm quần; chỉ mua quần → offer thêm áo.
+- Chỉ offer **1 lần duy nhất**, không lặp lại nếu khách từ chối.
