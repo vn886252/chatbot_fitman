@@ -162,14 +162,14 @@ async def generate_response(messages: List[Dict[str, Any]], user_message: str) -
     # Bổ sung ảnh từ keyword trong câu chat (chỉ khi keyword rõ ràng, tránh false positive)
     lower_user = user_message.lower()
 
-    # Nếu hỏi xem tất cả (cả áo lẫn quần)
-    if any(k in lower_user for k in ["tất cả", "tat ca", "hết", "het", "xem hết", "all"]):
+    # Nếu hỏi xem tất cả (cả áo lẫn quần) hoặc xem mẫu chung
+    if any(k in lower_user for k in ["tất cả", "tat ca", "hết", "het", "xem hết", "all", "cho xem mẫu", "xem mẫu", "mẫu đâu", "xem mau", "cho xem mau", "mẫu mới", "mau moi"]):
         for img in ALL_ANH_AO + ALL_ANH_QUAN:
             if img not in suggested_images:
                 suggested_images.append(img)
 
     # Nếu hỏi chung về quần — keyword đủ dài để tránh match nhầm
-    elif any(k in lower_user for k in ["xem ảnh quần", "ảnh quần", "mẫu quần", "xem mẫu quần"]):
+    elif any(k in lower_user for k in ["xem ảnh quần", "ảnh quần", "mẫu quần", "xem mẫu quần", "cac mau quan", "các mẫu quần"]):
         for q_img in ALL_ANH_QUAN:
             if q_img not in suggested_images:
                 suggested_images.append(q_img)
@@ -180,10 +180,10 @@ async def generate_response(messages: List[Dict[str, Any]], user_message: str) -
             if a_img not in suggested_images:
                 suggested_images.append(a_img)
 
-    # Nếu LLM gọi tinh_size mà chưa có ảnh → gửi bảng size
-    if not suggested_images and "tinh_size" in tool_calls_made:
-        suggested_images = ["/static/products/bang_size.jpg"]
-    # KHÔNG tự động gọi tim_anh_san_pham(user_message) vì dễ match sai (vd: "ao" trong "bao lâu")
+    # Chỉ gửi bảng size KHI khách hỏi bảng size (tránh spam ảnh size)
+    elif any(k in lower_user for k in ["bảng size", "bang size", "size chart", "bảng số đo", "bang so do", "form size"]):
+        if "/static/products/bang_size.jpg" not in suggested_images:
+            suggested_images.append("/static/products/bang_size.jpg")
 
     suggested_image = suggested_images[0] if suggested_images else None
 

@@ -1,0 +1,177 @@
+
+
+# Chỉnh sửa 2 file cho dự án Fitman
+
+## FILE 1: `backend/app/tools/business_rules.py`
+
+```python
+import re
+
+
+def tim_anh_san_pham(ma_san_pham_hoac_tu_khoa: str) -> dict:
+    """
+    Tìm ảnh sản phẩm dựa trên mã hoặc từ khóa.
+    Trả về dict: { "image_urls": [...], "matched_codes": [...] }
+    """
+    text = ma_san_pham_hoac_tu_khoa.strip().lower()
+    image_urls = []
+    matched_codes = []
+
+    # ============================================================
+    # NHÁNH 0: Nhận diện mã quần dạng "quần 123", "quần 1 2 3", "1 2 3"
+    # → Q1, Q2, Q3
+    # ============================================================
+    # Pattern: "quần" + các số (có thể liền hoặc cách nhau)
+    # Hoặc chỉ các số thuần: "1 2 3", "123"
+    quan_pattern = re.search(
+        r'(?:quần|quan)\s*([\d\s]+)',
+        text
+    )
+    # Pattern: chỉ số thuần (không có chữ "quần")
+    pure_number_pattern = re.search(
+        r'^[\d\s]+$',
+        text
+    )
+
+    if quan_pattern or pure_number_pattern:
+        # Trích các số ra
+        numbers = re.findall(r'\d+', text)
+        if numbers:
+            for num in numbers:
+                code = f"Q{num}"
+                matched_codes.append(code)
+                image_urls.append(f"/static/products/{code.lower()}.jpg")
+            return {
+                "image_urls": image_urls,
+                "matched_codes": matched_codes
+            }
+
+    # ============================================================
+    # NHÁNH 1: Nhận diện mã áo dạng "áo 1", "áo 1 2", "A1", "A2"
+    # ============================================================
+    ao_pattern = re.search(
+        r'(?:áo|ao)\s*([\d\s]+)',
+        text
+    )
+    if ao_pattern:
+        numbers = re.findall(r'\d+', text)
+        for num in numbers:
+            code = f"A{num}"
+            matched_codes.append(code)
+            image_urls.append(f"/static/products/{code.lower()}.jpg")
+        return {
+            "image_urls": image_urls,
+            "matched_codes": matched_codes
+        }
+
+    # ============================================================
+    # NHÁNH 2: Mã trực tiếp "Q1", "A2", "q1", "a2"
+    # ============================================================
+    direct_codes = re.findall(r'[qa]\d+', text)
+    if direct_codes:
+        for code in direct_codes:
+            code_upper = code.upper()
+            matched_codes.append(code_upper)
+            image_urls.append(f"/static/products/{code.lower()}.jpg")
+        return {
+            "image_urls": image_urls,
+            "matched_codes": matched_codes
+        }
+
+    # ============================================================
+    # NHÁNH 3 (MỚI): Xem mẫu CHUNG CHUNG
+    # "cho xem mẫu", "xem mẫu", "mẫu đâu", "xem mau", "mau",
+    # "cho xem mau", "xem sản phẩm", "xem san pham", "mẫu", "mau"
+    # → Gửi ảnh mẫu áo + quần
+    # ============================================================
+    generic_sample_keywords = [
+        "xem mẫu", "cho xem mẫu", "mẫu đâu", "xem mau",
+        "cho xem mau", "xem sản phẩm", "xem san pham",
+        "mẫu", "mau", "mẫu áo", "mẫu quần",
+        "xem áo", "xem quần", "xem ao", "xem quan",
+        "gửi mẫu", "gui mau", "gửi mau",
+    ]
+
+    is_generic_sample = False
+    for kw in generic_sample_keywords:
+        if kw in text:
+            is_generic_sample = True
+            break
+
+    # Case: text chỉ là "mau" hoặc "mẫu" (đúng 1 từ)
+    if text in ("mau", "mẫu", "xem mau", "xem mẫu"):
+        is_generic_sample = True
+
+    if is_generic_sample:
+        # Gửi cả mẫu áo + mẫu quần
+        image_urls = [
+            "/static/products/mau_ao.jpg",
+            "/static/products/mau_quan.jpg",
+        ]
+        matched_codes = ["MAU_AO", "MAU_QUAN"]
+        return {
+            "image_urls": image_urls,
+            "matched_codes": matched_codes
+        }
+
+    # ============================================================
+    # NHÁNH 4: Fallback – không match gì
+    # ============================================================
+    return {
+        "image_urls": image_urls,
+        "matched_codes": matched_codes
+    }
+```
+
+---
+
+## FILE 2: `backend/app/services/llm_service.py`
+
+```python
+# ============================================================
+# PHẦN KEYWORD MATCHING (dòng 165-182 sau chỉnh sửa)
+# ============================================================
+
+def _handle_keyword_fallback(user_message: str, suggested_images: list, tool_calls_made: list) -> list:
+    """
+    Xử lý fallback khi LLM không gọi tool hoặc cần bổ sung ảnh.
+    """
+    text = user_message.strip().lower()
+
+    # ----------------------------------------------------------
+    # 1) Khách HỎI bảng size → gửi bang_size.jpg
+    #    ("bảng size", "bang size", "size chart", "bảng size đâu")
+    # ----------------------------------------------------------
+    size_chart_keywords = [
+        "bảng size", "bang size", "size chart",
+        "bảng size đâu", "bang size dau",
+        "size bảng", "size bang",
+    ]
+    for kw in size_chart_keywords:
+        if kw in text:
+            if "/static/products/bang_size.jpg" not in suggested_images:
+                suggested_images.append("/static/products/bang_size.jpg")
+            break
+
+    # ----------------------------------------------------------
+    # 2) Khách xem mẫu CHUNG CHUNG → gửi mẫu áo + quần
+    #    ("xem mẫu", "cho xem mẫu", "mẫu", "mau", "xem mau",
+    #     "xem sản phẩm", "gửi mẫu")
+    # ----------------------------------------------------------
+    generic_sample_keywords = [
+        "xem mẫu", "cho xem mẫu", "mẫu đâu", "xem mau",
+        "cho xem mau", "xem sản phẩm", "xem san pham",
+        "gửi mẫu", "gui mau", "gửi mau",
+    ]
+    # Case: text đúng 1 từ "mau" / "mẫu"
+    if text in ("mau", "mẫu"):
+        generic_sample_keywords.append(text)
+
+    is_generic_sample = False
+    for kw in generic_sample_keywords:
+        if kw in text:
+            is_generic_sample = True
+            break
+
+    if is_generic_sample:
+        # Gửi mẫu áo + mẫu quần (tránh trùng)

@@ -42,14 +42,14 @@ def tim_anh_san_pham(ma_san_pham_hoac_tu_khoa: str) -> Dict[str, Any]:
     tu_khoa_lower = tu_khoa.lower()
     tu_khoa_upper = tu_khoa.upper()
 
-    # Chuẩn hóa "quần mẫu N" -> "Q{N}" trước khi xử lý
+    # Chuẩn hóa "quần mẫu N" hoặc "quần 123" -> "Q{N}" trước khi xử lý
     _quan_mau_map = {
         "quần mẫu 1": "Q1", "quan mau 1": "Q1", "mau quan 1": "Q1",
-        "quần mẫu 2": "Q2", "quan mau 2": "Q2",
-        "quần mẫu 3": "Q3", "quan mau 3": "Q3",
-        "quần mẫu 4": "Q4", "quan mau 4": "Q4",
-        "quần mẫu 6": "Q6", "quan mau 6": "Q6",
-        "quần mẫu 7": "Q7", "quan mau 7": "Q7",
+        "quần mẫu 2": "Q2", "quan mau 2": "Q2", "mau quan 2": "Q2",
+        "quần mẫu 3": "Q3", "quan mau 3": "Q3", "mau quan 3": "Q3",
+        "quần mẫu 4": "Q4", "quan mau 4": "Q4", "mau quan 4": "Q4",
+        "quần mẫu 6": "Q6", "quan mau 6": "Q6", "mau quan 6": "Q6",
+        "quần mẫu 7": "Q7", "quan mau 7": "Q7", "mau quan 7": "Q7",
     }
     for _phrase, _code in _quan_mau_map.items():
         if _phrase in tu_khoa_lower:
@@ -60,15 +60,19 @@ def tim_anh_san_pham(ma_san_pham_hoac_tu_khoa: str) -> Dict[str, Any]:
 
     image_urls: List[str] = []
 
+    # 0. Khách hỏi xem mẫu chung chung ("cho xem mẫu", "xem mẫu", "mẫu đâu", "mẫu", "mau", "xem mau", "mẫu mới")
+    if any(k in tu_khoa_lower for k in ["cho xem mẫu", "xem mẫu", "mẫu đâu", "cho xem mau", "xem mau", "mẫu mới", "mau moi", "sản phẩm", "san pham"]) or tu_khoa_lower in ("mẫu", "mau"):
+        image_urls = ALL_ANH_AO + ALL_ANH_QUAN
+
     # 1. Khách hỏi xem toàn bộ ảnh Quần
-    if any(k in tu_khoa_lower for k in ["quần", "quan", "short", "đùi"]):
+    elif any(k in tu_khoa_lower for k in ["quần", "quan", "short", "đùi"]):
         # Nếu hỏi cụ thể mã quần (Q1, Q2, Q3, Q4, Q6, Q7)
         matched_specific = False
         for q_code in ["Q1", "Q2", "Q3", "Q4", "Q6", "Q7"]:
-            if q_code.lower() in tu_khoa_lower.split() or q_code in tu_khoa_upper.split():
-                image_urls = [ANH_THEO_MA[q_code]]
+            if q_code.lower() in tu_khoa_lower.split() or q_code in tu_khoa_upper.split() or q_code.lower() in tu_khoa_lower:
+                if ANH_THEO_MA.get(q_code) and ANH_THEO_MA[q_code] not in image_urls:
+                    image_urls.append(ANH_THEO_MA[q_code])
                 matched_specific = True
-                break
         if not matched_specific:
             image_urls = ALL_ANH_QUAN
 
@@ -131,9 +135,9 @@ def tinh_size(can_nang: float, chieu_cao: float, loai_san_pham: str = "cả hai"
 
     # --- Size Quần ---
     # Quần chỉ có M, L, XL chia đều 55-100kg
-    if can_nang <= 70:
+    if can_nang <= 68:
         quan = "M"
-    elif can_nang <= 85:
+    elif can_nang <= 81:
         quan = "L"
     else:
         quan = "XL"
