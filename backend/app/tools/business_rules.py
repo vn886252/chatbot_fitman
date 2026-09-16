@@ -42,6 +42,22 @@ def tim_anh_san_pham(ma_san_pham_hoac_tu_khoa: str) -> Dict[str, Any]:
     tu_khoa_lower = tu_khoa.lower()
     tu_khoa_upper = tu_khoa.upper()
 
+    # Chuẩn hóa "quần mẫu N" -> "Q{N}" trước khi xử lý
+    _quan_mau_map = {
+        "quần mẫu 1": "Q1", "quan mau 1": "Q1", "mau quan 1": "Q1",
+        "quần mẫu 2": "Q2", "quan mau 2": "Q2",
+        "quần mẫu 3": "Q3", "quan mau 3": "Q3",
+        "quần mẫu 4": "Q4", "quan mau 4": "Q4",
+        "quần mẫu 6": "Q6", "quan mau 6": "Q6",
+        "quần mẫu 7": "Q7", "quan mau 7": "Q7",
+    }
+    for _phrase, _code in _quan_mau_map.items():
+        if _phrase in tu_khoa_lower:
+            tu_khoa = _code
+            tu_khoa_lower = _code.lower()
+            tu_khoa_upper = _code.upper()
+            break
+
     image_urls: List[str] = []
 
     # 1. Khách hỏi xem toàn bộ ảnh Quần
@@ -79,9 +95,7 @@ def tim_anh_san_pham(ma_san_pham_hoac_tu_khoa: str) -> Dict[str, Any]:
                 if img not in image_urls:
                     image_urls.append(img)
 
-    # Nếu vẫn chưa có và hỏi chung về áo/cbum/mẫu
-    if not image_urls and any(k in tu_khoa_lower for k in ["áo", "ao", "cbum", "mẫu", "mau", "xem ảnh"]):
-        image_urls = ALL_ANH_AO
+    # Không thêm fallback "ao" ở đây vì dễ match sai (vd: "bao", "bao nhiêu")
 
     return {
         "ma": tu_khoa,
