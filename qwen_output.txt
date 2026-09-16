@@ -1,12 +1,65 @@
 
 
 ```python
-    # 2. Khách hỏi xem toàn bộ ảnh Áo hoặc xem mẫu chung
-    elif tu_khoa_lower in ("áo", "ao") or any(k in tu_khoa_lower for k in ["mẫu áo", "ảnh áo", "áo thun", "xem áo", "cac mau ao", "các mẫu áo"]):
-        image_urls = ALL_ANH_AO
+# backend/app/tools/schemas.py
+
+TINH_SIZE_SCHEMA = {
+    "name": "tinh_size",
+    "description": "Tư vấn size áo/quần dựa trên cân nặng và chiều cao.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "can_nang": {
+                "type": "number",
+                "description": "Cân nặng của khách (kg).",
+            },
+            "chieu_cao": {
+                "type": "number",
+                "description": "Chiều cao của khách (m).",
+            },
+            "loai_san_pham": {
+                "type": "string",
+                "enum": ["áo", "quần", "cả hai"],
+                "description": "Loại sản phẩm khách muốn tư vấn size (áo, quần, hoặc cả hai nếu mua nguyên bộ).",
+            },
+        },
+        "required": ["can_nang", "chieu_cao", "loai_san_pham"],
+    },
+}
 ```
 
 ```python
-    # Nếu hỏi chung về áo — keyword đủ dài để tránh match nhầm
-    elif any(k in lower_user for k in ["xem ảnh áo", "ảnh áo", "mẫu áo", "xem mẫu áo", "cac mau ao", "các mẫu áo", "xem áo", "gửi áo", "mua áo"]):
+# backend/app/tools/business_rules.py
+
+def tinh_size(can_nang: float, chieu_cao: float, loai_san_pham: str = "cả hai") -> dict:
+    # --- Size Áo ---
+    if can_nang < 62:
+        ao = "S"
+    elif can_nang <= 75:
+        ao = "M"
+    elif can_nang <= 84:
+        ao = "L"
+    else:
+        ao = "XL"
+
+    # Upsize nếu chiều cao < 1.65
+    if chieu_cao < 1.65:
+        upsize_map = {"S": "M", "M": "L", "L": "XL", "XL": "XXL"}
+        ao = upsize_map[ao]
+
+    # --- Size Quần ---
+    if can_nang <= 70:
+        quan = "M"
+    elif can_nang <= 85:
+        quan = "L"
+    else:
+        quan = "XL"
+
+    # --- Trả kết quả theo loại sản phẩm ---
+    if loai_san_pham == "áo":
+        return {"size": f"Áo {ao}", "can_nang": can_nang, "chieu_cao": chieu_cao}
+    elif loai_san_pham == "quần":
+        return {"size": f"Quần {quan}", "can_nang": can_nang, "chieu_cao": chieu_cao}
+    else:
+        return {"size": f"Áo {ao}, Quần {quan}", "can_nang": can_nang, "chieu_cao": chieu_cao}
 ```

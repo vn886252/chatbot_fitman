@@ -105,45 +105,52 @@ def tim_anh_san_pham(ma_san_pham_hoac_tu_khoa: str) -> Dict[str, Any]:
     }
 
 
-def tinh_size(can_nang: float, chieu_cao: float) -> dict:
+def tinh_size(can_nang: float, chieu_cao: float, loai_san_pham: str = "cả hai") -> dict:
     if can_nang <= 0 or chieu_cao <= 0:
         raise ValueError("Cân nặng và chiều cao phải lớn hơn 0")
     
     if chieu_cao > 3:
         chieu_cao = chieu_cao / 100
 
-    if can_nang < 62.0:
-        size_goc = "S"
-    elif 62.0 <= can_nang <= 75.0:
-        size_goc = "M"
-    elif 75.0 < can_nang <= 84.0:
-        size_goc = "L"
+    # --- Size Áo ---
+    if can_nang < 62:
+        ao = "S"
+    elif can_nang <= 75:
+        ao = "M"
+    elif can_nang <= 84:
+        ao = "L"
     else:
-        size_goc = "XL"
+        ao = "XL"
 
+    # Upsize áo nếu chiều cao < 1.65
+    ly_do = ""
     if chieu_cao < 1.65:
-        co_upsize = True
-        if size_goc == "S":
-            size = "M"
-        elif size_goc == "M":
-            size = "L"
-        elif size_goc == "L":
-            size = "XL"
-        else:
-            size = "XL"
-        ly_do = f"Chiều cao {chieu_cao:.2f}m thấp hơn 1.65m nên tăng 1 size từ {size_goc} lên {size} để mặc thoải mái"
+        upsize_map = {"S": "M", "M": "L", "L": "XL", "XL": "XL"}
+        ao = upsize_map[ao]
+        ly_do = "Chiều cao dưới 1m65 nên tự động up 1 size áo để mặc thoải mái. "
+
+    # --- Size Quần ---
+    # Quần chỉ có M, L, XL chia đều 55-100kg
+    if can_nang <= 70:
+        quan = "M"
+    elif can_nang <= 85:
+        quan = "L"
     else:
-        co_upsize = False
-        size = size_goc
-        ly_do = f"Chiều cao {chieu_cao:.2f}m chuẩn form size {size}"
+        quan = "XL"
+
+    # --- Trả kết quả theo loại sản phẩm ---
+    if loai_san_pham == "áo":
+        final_size = f"Áo {ao}"
+    elif loai_san_pham == "quần":
+        final_size = f"Quần {quan}"
+    else:
+        final_size = f"Áo {ao}, Quần {quan}"
 
     return {
-        "size": size,
-        "size_goc": size_goc,
+        "size": final_size,
         "can_nang": can_nang,
         "chieu_cao": chieu_cao,
-        "co_upsize": co_upsize,
-        "ly_do": ly_do
+        "ly_do": ly_do + f"Form chuẩn theo {can_nang}kg."
     }
 
 

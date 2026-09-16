@@ -16,9 +16,14 @@ FITMAN_TOOLS = [
                     "chieu_cao": {
                         "type": "number",
                         "description": "Chiều cao tính bằng mét (ví dụ: 1.65, 1.7) hoặc cm (165, 170)"
+                    },
+                    "loai_san_pham": {
+                        "type": "string",
+                        "enum": ["áo", "quần", "cả hai"],
+                        "description": "Loại sản phẩm khách muốn tư vấn size (áo, quần, hoặc cả hai nếu mua nguyên bộ)."
                     }
                 },
-                "required": ["can_nang", "chieu_cao"]
+                "required": ["can_nang", "chieu_cao", "loai_san_pham"]
             }
         }
     },
