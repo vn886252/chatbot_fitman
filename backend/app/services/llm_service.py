@@ -152,28 +152,25 @@ async def generate_response(messages: List[Dict[str, Any]], user_message: str) -
             full_messages.append(assistant_msg)
             reply_text = assistant_msg.get("content", "")
 
-    # Phân tích và bổ sung đề xuất ảnh đính kèm
+    # Bổ sung ảnh từ keyword trong câu chat (chỉ khi keyword rõ ràng, tránh false positive)
     lower_user = user_message.lower()
-    
-    # Nếu hỏi chung về quần (mà chưa có đủ các ảnh quần)
+
+    # Nếu hỏi chung về quần — keyword đủ dài để tránh match nhầm
     if any(k in lower_user for k in ["xem ảnh quần", "ảnh quần", "mẫu quần", "xem mẫu quần"]):
         for q_img in ALL_ANH_QUAN:
             if q_img not in suggested_images:
                 suggested_images.append(q_img)
 
-    # Nếu hỏi chung về áo (mà chưa có đủ các ảnh áo)
+    # Nếu hỏi chung về áo — keyword đủ dài để tránh match nhầm
     elif any(k in lower_user for k in ["xem ảnh áo", "ảnh áo", "mẫu áo", "xem mẫu áo", "cac mau ao", "các mẫu áo"]):
         for a_img in ALL_ANH_AO:
             if a_img not in suggested_images:
                 suggested_images.append(a_img)
 
-    # Nếu chưa có ảnh nào từ trước, tự động tra cứu từ câu chat
-    if not suggested_images:
-        lookup_result = tim_anh_san_pham(user_message)
-        if lookup_result.get("found"):
-            suggested_images = lookup_result.get("image_urls", [])
-        elif "tinh_size" in tool_calls_made:
-            suggested_images = ["/static/products/bang_size.jpg"]
+    # Nếu LLM gọi tinh_size mà chưa có ảnh → gửi bảng size
+    if not suggested_images and "tinh_size" in tool_calls_made:
+        suggested_images = ["/static/products/bang_size.jpg"]
+    # KHÔNG tự động gọi tim_anh_san_pham(user_message) vì dễ match sai (vd: "ao" trong "bao lâu")
 
     suggested_image = suggested_images[0] if suggested_images else None
 
