@@ -1,12 +1,25 @@
 import logging
+from collections import defaultdict
 from fastapi import APIRouter, Request, Response
-from fastapi.responses import PlainTextResponse
 from app.config import settings
 from app.services.llm_service import generate_response
 from app.services.facebook_service import send_text_message, send_image_message
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+
+# Lưu lịch sử hội thoại theo từng user (sender_id)
+# Tối đa 20 messages để tránh context quá dài
+_conversation_history: dict[str, list] = defaultdict(list)
+MAX_HISTORY = 20
+
+
+def _trim_history(history: list) -> list:
+    """Giữ lại tối đa MAX_HISTORY messages gần nhất."""
+    if len(history) > MAX_HISTORY:
+        return history[-MAX_HISTORY:]
+    return history
+
 
 @router.get("/webhook")
 async def verify_webhook(request: Request):
@@ -28,6 +41,7 @@ async def verify_webhook(request: Request):
     logger.warning(f"Webhook verification failed! Expected token: {settings.FB_VERIFY_TOKEN}, got: {hub_verify_token}")
     return Response(content="Verification failed: token mismatch", media_type="text/plain", status_code=403)
 
+
 @router.post("/webhook")
 async def handle_webhook(request: Request):
     try:
@@ -47,23 +61,37 @@ async def handle_webhook(request: Request):
                 user_text = message.get("text")
                 if sender_id and user_text:
                     try:
-                        res = await generate_response([], user_text)
-                        reply_text = res.get("reply_text")
+                        # Lấy lịch sử hội thoại của user này
+                        history = _trim_history(_conversation_history[sender_id])
+
+                        res = await generate_response(history, user_text)
+                        reply_text = res.get("reply_text", "")
                         suggested_images = res.get("suggested_images") or []
                         if not suggested_images and res.get("suggested_image"):
                             suggested_images = [res.get("suggested_image")]
 
+                        # Cập nhật lịch sử (dùng updated_messages từ service)
+                        updated = res.get("updated_messages", [])
+                        if updated:
+                            # Lọc bỏ system message để không lưu vào history
+                            _conversation_history[sender_id] = [
+                                m for m in updated if m.get("role") != "system"
+                            ]
+
                         # Gửi câu trả lời văn bản
                         if reply_text:
                             await send_text_message(sender_id, reply_text)
-                        
+
                         # Gửi tất cả ảnh đính kèm
                         for img in suggested_images:
                             await send_image_message(sender_id, img)
 
                     except Exception as e:
-                        logger.error(f"Error handling message for {sender_id}: {e}")
-                        await send_text_message(sender_id, "Dạ em chào anh! Hiện tại hệ thống đang bận một chút, anh vui lòng nhắn lại sau ít phút nhé ạ.")
+                        logger.error(f"Error handling message for {sender_id}: {e}", exc_info=True)
+                        await send_text_message(
+                            sender_id,
+                            "Dạ em chào anh! Hiện tại hệ thống đang bận một chút, anh vui lòng nhắn lại sau ít phút nhé ạ."
+                        )
 
         return {"status": "EVENT_RECEIVED"}
     return {"status": "NOT_A_PAGE_EVENT"}
