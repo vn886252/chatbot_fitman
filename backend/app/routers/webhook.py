@@ -70,13 +70,19 @@ async def handle_webhook(request: Request):
                         if not suggested_images and res.get("suggested_image"):
                             suggested_images = [res.get("suggested_image")]
 
-                        # Cập nhật lịch sử (dùng updated_messages từ service)
+                        # Cập nhật lịch sử — chỉ lưu user + assistant có text content
+                        # Bỏ: role=system, role=tool, assistant chỉ có tool_calls (không có text)
                         updated = res.get("updated_messages", [])
                         if updated:
-                            # Lọc bỏ system message để không lưu vào history
-                            _conversation_history[sender_id] = [
-                                m for m in updated if m.get("role") != "system"
-                            ]
+                            clean_history = []
+                            for m in updated:
+                                role = m.get("role")
+                                if role == "user":
+                                    clean_history.append(m)
+                                elif role == "assistant" and m.get("content"):
+                                    # Chỉ lưu assistant message có nội dung text thực sự
+                                    clean_history.append({"role": "assistant", "content": m["content"]})
+                            _conversation_history[sender_id] = clean_history
 
                         # Gửi câu trả lời văn bản
                         if reply_text:

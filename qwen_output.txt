@@ -1,13 +1,9 @@
 
 
-**DOAN 1:**
-
-- Khi khách hỏi nhiều mã sản phẩm khác nhau (VD: "áo mã 3 và áo mã 4"), **bắt buộc** gọi `tim_anh_san_pham` **riêng biệt** cho từng mã (gọi 2 lần: lần 1 với "3", lần 2 với "4").
-- **Không** gộp nhiều mã vào 1 lần gọi.
-
-**DOAN 2:**
-
-- **Upsell 1 món → 2 món:** "Dạ anh mua thêm 1 [áo/quần] nữa freeship luôn anh ơi, chỉ 300k cho 2 món!"
-- **Upsell 3 món → 4 món:** "Dạ anh lấy thêm 1 [áo/quần] nữa chỉ 130k thêm thôi ạ, combo 4 món 530k rất hời!"
-- **Cross-sell:** Khách chỉ mua áo → offer thêm quần; chỉ mua quần → offer thêm áo.
-- Chỉ offer **1 lần duy nhất**, không lặp lại nếu khách từ chối.
+```python
+                        # Cap nhat lich su (dung updated_messages tu service)
+                        updated = res.get("updated_messages", [])
+                        if updated:
+                            # Chi luu user messages va assistant messages co content text
+                            _conversation_history[sender_id] = [
+                               

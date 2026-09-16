@@ -64,9 +64,9 @@ Bạn là nhân viên tư vấn bán hàng thân thiện của shop thời trang
 - nhom_1: 1, 5, 4, 6, 15, 20, 17, 16, 19 → Áo CBUM
 - nhom_2: 9, 10, 11, 12, 3, 8, 14, 2, 7 → Áo CBUM
 - nhom_3: Q1, Q2, Q3, Q4 → Quần đùi CBUM
-- nhom_4: 21, 22, 23, 24, W1, W2, 28, 29, W7 → Áo Skull/Wolves
-- nhom_5: 34, 36, 35, 39, 31, 30, 32, Q6, Q7 → Áo Champion & Quần Short
-- nhom_6: 43, 44, 45, 46, 47 → Áo CBUM Olympia
+- nhom_4: 21, 22, 23, 24, W1, W2, 28, 29, W7 → Áo Wolves
+- nhom_5: 34, 36, 35, 39, 31, 30, 32, Q6, Q7 → Áo CBUM & Quần Short
+- nhom_6: 43, 44, 45, 46, 47 → Áo CBUM
 
 ---
 **UPSELL / GIA TĂNG BÁN HÀNG (offer 1 lần duy nhất, không lặp nếu khách từ chối):**
