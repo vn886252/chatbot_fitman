@@ -221,55 +221,6 @@ async def generate_response(
             if "/static/products/bang_size.jpg" not in suggested_images:
                 suggested_images.append("/static/products/bang_size.jpg")
 
-    # Safety net: Tự động ghi nhận đơn nếu bot đã xác nhận chốt đơn trong reply_text mà tool tao_don_hang chưa được gọi
-    if "tao_don_hang" not in tool_calls_made:
-        lower_reply = reply_text.lower()
-        phone_match = re.search(r'0\d{9,10}', reply_text) or re.search(r'0\d{9,10}', user_message)
-        has_shipping = any(k in lower_reply or k in lower_user for k in ["ship tới", "giao tới", "ship đến", "giao đến", "giao qua", "giao tại", "địa chỉ"])
-        has_total = any(k in lower_reply for k in ["tổng", "freeship", "tổng cộng", "tiền"])
-        has_thanks = any(k in lower_reply for k in ["cảm ơn", "ủng hộ shop", "tạo đơn", "lên đơn", "chốt đơn"])
-
-        if phone_match and has_shipping and (has_total or has_thanks):
-            logger.info("Safety net triggered: Auto-creating order from confirmed reply_text...")
-            try:
-                price_match = re.search(r'(\d{1,3}(?:\.\d{3})+|\d{2,4}\s*(?:k|000))', reply_text)
-                extracted_price = 0
-                if price_match:
-                    raw_p = price_match.group(1).replace(".", "").lower()
-                    if "k" in raw_p:
-                        extracted_price = int(raw_p.replace("k", "").strip()) * 1000
-                    else:
-                        extracted_price = int(raw_p)
-
-                # Trích xuất địa chỉ thực tế từ user_message hoặc reply_text
-                dia_chi_text = ""
-                addr_match = re.search(r'(?:ship tới|giao tới|giao đến|ship đến|giao qua|địa chỉ:?|dc:?)\s*\*?([^,\n\*\.\!]+(?:,[^,\n\*\.\!]+)*)', user_message, re.IGNORECASE)
-                if not addr_match:
-                    addr_match = re.search(r'(?:ship tới|giao tới|giao đến|ship đến|địa chỉ:?)\s*\*?([^\n\*]+)', reply_text, re.IGNORECASE)
-                if addr_match:
-                    dia_chi_text = addr_match.group(1).strip().rstrip(".,")
-
-                # Lọc danh sách món hợp lệ
-                items = []
-                for line in reply_text.split("\n"):
-                    line_clean = line.strip()
-                    if (line_clean.startswith("-") or line_clean.startswith("•") or line_clean.startswith("+")) and not any(ign in line_clean.lower() for ign in ["sđt", "điện thoại", "địa chỉ", "giao", "ship", "size của anh", "size :"]):
-                        items.append(line_clean.lstrip("-•+ ").strip())
-
-                from app.tools.business_rules import tao_don_hang
-                await tao_don_hang(
-                    danh_sach_mon=items or ["Combo sản phẩm Fitman"],
-                    so_luong=len(items) or 1,
-                    tong_tien=extracted_price or 0,
-                    so_dien_thoai=phone_match.group(0),
-                    dia_chi=dia_chi_text or "Chưa có địa chỉ cụ thể",
-                    ten_khach_hang=customer_name or "Khách hàng",
-                    sender_id=sender_id or ""
-                )
-                tool_calls_made.append("tao_don_hang")
-            except Exception as auto_order_err:
-                logger.error(f"Error in auto-order safety net: {auto_order_err}")
-
     suggested_image = suggested_images[0] if suggested_images else None
 
     return {

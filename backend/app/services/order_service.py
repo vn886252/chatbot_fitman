@@ -1,4 +1,5 @@
 import os
+import re
 import json
 import uuid
 import logging
@@ -84,6 +85,12 @@ def save_order(order_data: dict) -> dict:
         clean_addr = "Chưa có địa chỉ cụ thể"
     else:
         clean_addr = raw_addr
+
+    # Kiểm tra tính hợp lệ của đơn hàng trước khi tạo
+    clean_phone = re.sub(r'\D', '', str(order_data.get("so_dien_thoai") or "")).strip()
+    if tong_tien < 100000 or len(clean_phone) < 10 or clean_addr == "Chưa có địa chỉ cụ thể":
+        logger.warning(f"Từ chối lưu đơn hàng không hợp lệ: tiền={tong_tien}, SĐT={clean_phone}, địa chỉ={clean_addr}")
+        return None
 
     order = {
         "id": order_id,

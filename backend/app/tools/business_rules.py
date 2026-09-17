@@ -191,11 +191,13 @@ def tinh_gia(so_luong: int) -> dict:
 
     don_gia_co_ban = 150000
 
+    upsell_hint = ""
     if so_luong == 1:
         phi_ship = 30000
         freeship = False
         tong_tien = 180000
         chi_tiet = "1 món: 150.000đ + 30.000đ phí ship = 180.000đ"
+        upsell_hint = "Khách chỉ mua 1 món (180k gồm 30k ship). BẮT BUỘC BẠN PHẢI GỢI Ý (UPSELL): Anh lấy thêm 1 món nữa (áo hoặc quần) thành combo 2 món chỉ 300k được FREESHIP luôn ạ, bù thêm có 120k là có thêm 1 món mà không tốn tiền ship!"
     elif so_luong == 2:
         phi_ship = 0
         freeship = True
@@ -214,7 +216,7 @@ def tinh_gia(so_luong: int) -> dict:
 
     tong_tien_format = f"{tong_tien:,}".replace(",", ".") + "đ"
 
-    return {
+    res = {
         "so_luong": so_luong,
         "don_gia_co_ban": don_gia_co_ban,
         "phi_ship": phi_ship,
@@ -223,6 +225,9 @@ def tinh_gia(so_luong: int) -> dict:
         "tong_tien_format": tong_tien_format,
         "chi_tiet": chi_tiet
     }
+    if upsell_hint:
+        res["upsell_hint"] = upsell_hint
+    return res
 
 
 async def tao_don_hang(
@@ -236,7 +241,39 @@ async def tao_don_hang(
 ) -> dict:
     """
     Tạo đơn hàng chính thức, lưu vào hệ thống và gửi thông báo đơn mới tới shop owner qua Telegram.
+    Kiểm tra nghiêm ngặt: SĐT, Địa chỉ, Tổng tiền hợp lệ mới cho phép tạo đơn!
     """
+    # 1. Kiểm tra SĐT
+    digits_phone = re.sub(r'\D', '', str(so_dien_thoai or ''))
+    if len(digits_phone) < 10:
+        return {
+            "success": False,
+            "error": "Chưa có Số Điện Thoại hợp lệ (tối thiểu 10 chữ số). Tuyệt đối CẤM tạo đơn khi chưa có SĐT thật!"
+        }
+
+    # 2. Kiểm tra Địa chỉ
+    clean_addr = str(dia_chi or "").strip()
+    hallucinated_addrs = [
+        "chưa có địa chỉ cụ thể", "chưa có địa chỉ", "123 lê lợi", "123 đường lê lợi",
+        "địa chỉ bạn đã cung cấp", "địa chỉ khách cung cấp", "địa chỉ của anh", ""
+    ]
+    if len(clean_addr) < 6 or clean_addr.lower() in hallucinated_addrs:
+        return {
+            "success": False,
+            "error": "Chưa có Địa Chỉ giao hàng cụ thể của khách. Hãy hỏi xin địa chỉ (số nhà, đường, phường...) trước khi tạo đơn!"
+        }
+
+    # 3. Kiểm tra Tổng tiền
+    try:
+        val_tien = int(tong_tien)
+    except Exception:
+        val_tien = 0
+    if val_tien < 100000:
+        return {
+            "success": False,
+            "error": f"Tổng tiền đơn hàng không hợp lệ ({val_tien}đ). Đơn hàng tối thiểu phải từ 150.000đ trở lên. Chưa thể tạo đơn!"
+        }
+
     from app.services.order_service import save_order
     from app.services.telegram_service import send_new_order_notification
 
@@ -247,18 +284,25 @@ async def tao_don_hang(
         "ten_khach_hang": str(ten_khach_hang or "Khách hàng"),
         "danh_sach_mon": danh_sach_mon,
         "so_luong": int(so_luong),
-        "tong_tien": int(tong_tien),
+        "tong_tien": val_tien,
         "so_dien_thoai": str(so_dien_thoai),
-        "dia_chi": str(dia_chi),
+        "dia_chi": clean_addr,
         "sender_id": str(sender_id)
     }
 
     saved = save_order(order_data)
+    if not saved:
+        return {
+            "success": False,
+            "error": "Lỗi lưu đơn hàng vào hệ thống!"
+        }
+
     telegram_ok = await send_new_order_notification(saved)
 
     return {
         "success": True,
         "order_id": saved["id"],
-        "message": f"Đơn hàng {saved['id']} đã được ghi nhận và gửi thông báo thành công!",
+        "order_number_today": saved.get("order_number_today", 1),
+        "message": f"Đơn hàng {saved['id']} (Đơn #{saved.get('order_number_today', 1)} hôm nay) đã được ghi nhận và gửi thông báo thành công!",
         "telegram_notified": telegram_ok
     }
