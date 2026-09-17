@@ -156,8 +156,12 @@ async def generate_response(messages: List[Dict[str, Any]], user_message: str) -
     # Strip markdown image links khỏi reply_text (safety net - LLM đôi khi vẫn tự thêm)
     # Pattern: ![text](url) hoặc ![text]([url](url2))
     reply_text = re.sub(r'!\[.*?\]\(.*?\)', '', reply_text).strip()
-    # Xóa dòng trống thừa sau khi strip
-    reply_text = re.sub(r'\n{3,}', '\n\n', reply_text).strip()
+    # Xóa markdown link thường [text](url) mà LLM có thể chèn
+    reply_text = re.sub(r'\[([^\]]*)\]\((?:https?://)?\S+\)', r'\1', reply_text).strip()
+    # Xóa dòng chỉ chứa khoảng trắng (space/tab) thành dòng trống thật
+    reply_text = re.sub(r'(?m)^[ \t]+$', '', reply_text)
+    # Gộp 2+ dòng trống liên tiếp thành 1 dòng trống duy nhất
+    reply_text = re.sub(r'\n{2,}', '\n\n', reply_text).strip()
 
     # Bổ sung ảnh từ keyword trong câu chat (chỉ khi keyword rõ ràng, tránh false positive)
     lower_user = user_message.lower()
