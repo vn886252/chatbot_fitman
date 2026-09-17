@@ -43,7 +43,11 @@ def save_order(order_data: dict) -> dict:
 
     now = _get_ict_now()
     date_str = now.strftime("%Y-%m-%d")
-    order_id = f"ORD-{now.strftime('%y%m%d')}-{str(uuid.uuid4())[:4].upper()}"
+
+    # Đếm số thứ tự đơn trong ngày (Đơn #1, #2, #3...)
+    today_orders = [o for o in orders if o.get("date") == date_str]
+    order_number_today = len(today_orders) + 1
+    order_id = f"ORD-{now.strftime('%y%m%d')}-{order_number_today:03d}"
 
     danh_sach_mon = order_data.get("danh_sach_mon", [])
     if isinstance(danh_sach_mon, str):
@@ -59,17 +63,40 @@ def save_order(order_data: dict) -> dict:
     except Exception:
         tong_tien = 0
 
+    # Làm sạch tên khách hàng: chống bịa tên mẫu
+    raw_name = str(order_data.get("ten_khach_hang") or "").strip()
+    hallucinated_names = [
+        "nguyễn văn a", "nguyễn văn tuấn", "trần văn test", "anh nam", 
+        "anh tuấn", "anh hùng", "anh minh", "nguyễn văn b", "test", ""
+    ]
+    if raw_name.lower() in hallucinated_names or not raw_name:
+        clean_name = "Khách hàng"
+    else:
+        clean_name = raw_name
+
+    # Làm sạch địa chỉ: chống bịa địa chỉ mẫu (như 123 Lê Lợi...)
+    raw_addr = str(order_data.get("dia_chi") or "").strip()
+    hallucinated_addrs = [
+        "123 lê lợi", "123 đường lê lợi", "123 abc", "123 đường abc",
+        "địa chỉ bạn đã cung cấp", "địa chỉ khách cung cấp", "địa chỉ của anh", ""
+    ]
+    if raw_addr.lower() in hallucinated_addrs or not raw_addr:
+        clean_addr = "Chưa có địa chỉ cụ thể"
+    else:
+        clean_addr = raw_addr
+
     order = {
         "id": order_id,
+        "order_number_today": order_number_today,
         "created_at": now.strftime("%Y-%m-%d %H:%M:%S"),
         "date": date_str,
-        "ten_khach_hang": str(order_data.get("ten_khach_hang") or "Khách hàng"),
+        "ten_khach_hang": clean_name,
         "danh_sach_mon": danh_sach_mon,
         "so_luong": so_luong,
         "tong_tien": tong_tien,
-        "so_dien_thoai": str(order_data.get("so_dien_thoai") or ""),
-        "dia_chi": str(order_data.get("dia_chi") or ""),
-        "sender_id": str(order_data.get("sender_id") or "")
+        "so_dien_thoai": str(order_data.get("so_dien_thoai") or "").strip(),
+        "dia_chi": clean_addr,
+        "sender_id": str(order_data.get("sender_id") or "").strip()
     }
 
     orders.append(order)

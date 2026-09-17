@@ -71,28 +71,28 @@ FITMAN_TOOLS = [
                 "properties": {
                     "ten_khach_hang": {
                         "type": "string",
-                        "description": "Tên khách hàng (nếu biết, mặc định 'Khách hàng')"
+                        "description": "CHỈ ĐƯỢC điền tên nếu khách hàng tự nói tên mình trong tin nhắn (ví dụ: 'em tên Hùng', 'mình là Tuấn'). Nếu khách KHÔNG nói tên, BẮT BUỘC ĐỂ: 'Khách hàng'. TUYỆT ĐỐI CẤM TỰ BỊA TÊN KHÁCH HÀNG!"
                     },
                     "danh_sach_mon": {
                         "type": "array",
                         "items": {"type": "string"},
-                        "description": "Danh sách các món cụ thể kèm size (ví dụ: ['1 áo mẫu 30 (size M)', '1 áo mẫu 31 (size M)', '1 quần mẫu 1 (size L)']"
+                        "description": "Danh sách các món cụ thể kèm size (ví dụ: ['1 áo mẫu 45 (size L)', '1 áo mẫu 46 (size L)', '1 quần mẫu 1 (size L)']"
                     },
                     "so_luong": {
                         "type": "integer",
-                        "description": "Tổng số lượng món hàng (ví dụ: 3, 5)"
+                        "description": "Tổng số lượng món hàng (ví dụ: 3, 4, 5)"
                     },
                     "tong_tien": {
                         "type": "integer",
-                        "description": "Tổng số tiền của đơn hàng (ví dụ: 300000, 400000, 660000)"
+                        "description": "Tổng số tiền của đơn hàng theo bảng giá (ví dụ: 300000, 400000, 530000, 660000)"
                     },
                     "so_dien_thoai": {
                         "type": "string",
-                        "description": "Số điện thoại nhận hàng của khách (ví dụ: '0794763225')"
+                        "description": "Số điện thoại nhận hàng THẬT do khách cung cấp (ví dụ: '0794763225'). Trích xuất chính xác 100%, TUYỆT ĐỐI CẤM BỊA SĐT!"
                     },
                     "dia_chi": {
                         "type": "string",
-                        "description": "Địa chỉ nhận hàng cụ thể của khách"
+                        "description": "Địa chỉ nhận hàng THẬT do khách cung cấp trong chat. Trích xuất chính xác 100%, TUYỆT ĐỐI CẤM BỊA ĐỊA CHỈ (như 123 Lê Lợi...)!"
                     }
                 },
                 "required": ["danh_sach_mon", "so_luong", "tong_tien", "so_dien_thoai", "dia_chi"]

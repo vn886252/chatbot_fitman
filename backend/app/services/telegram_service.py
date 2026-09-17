@@ -38,9 +38,10 @@ async def send_telegram_message(text: str, parse_mode: str = "HTML") -> bool:
 
 async def send_new_order_notification(order: Dict[str, Any]) -> bool:
     """
-    Format và gửi thông báo đơn hàng mới tới Telegram.
+    Format và gửi thông báo đơn hàng mới tới Telegram kèm số thứ tự đơn trong ngày.
     """
     order_id = html.escape(str(order.get("id", "")))
+    order_num = order.get("order_number_today", 1)
     ten_khach = html.escape(str(order.get("ten_khach_hang", "Khách hàng")))
     sdt = html.escape(str(order.get("so_dien_thoai", "")))
     dia_chi = html.escape(str(order.get("dia_chi", "")))
@@ -58,7 +59,7 @@ async def send_new_order_notification(order: Dict[str, Any]) -> bool:
 
     freeship_text = " (Freeship)" if so_luong >= 2 else " (+30k ship)"
 
-    msg = f"""🔥 <b>ĐƠN HÀNG MỚI TỪ FITMAN!</b> 🔥
+    msg = f"""🔥 <b>ĐƠN HÀNG MỚI (ĐƠN #{order_num} TRONG NGÀY)</b> 🔥
 🔖 <b>Mã đơn:</b> <code>{order_id}</code>
 
 👤 <b>Khách hàng:</b> {ten_khach}
@@ -71,14 +72,14 @@ async def send_new_order_notification(order: Dict[str, Any]) -> bool:
 💰 <b>Tổng tiền:</b> <b>{formatted_tien}đ</b>{freeship_text}
 ⏰ <b>Thời gian:</b> {created_at}
 
-<i>Chatbot đã ghi nhận và báo đơn thành công!</i> 💪"""
+<i>Chatbot đã ghi nhận đơn #{order_num} trong ngày và lưu hệ thống!</i> 💪"""
 
     return await send_telegram_message(msg)
 
 
 async def send_daily_revenue_report(target_date: Optional[str] = None) -> bool:
     """
-    Format và gửi báo cáo tổng kết doanh thu ngày tới Telegram.
+    Format và gửi báo cáo tổng kết doanh thu ngày tới Telegram lúc 22:00.
     """
     summary = get_daily_summary(target_date)
     date_str = summary.get("date", "")
@@ -90,7 +91,7 @@ async def send_daily_revenue_report(target_date: Optional[str] = None) -> bool:
     formatted_rev = f"{total_revenue:,}".replace(",", ".")
 
     if total_orders == 0:
-        msg = f"""📊 <b>BÁO CÁO DOANH THU NGÀY {date_str}</b>
+        msg = f"""📊 <b>BÁO CÁO DOANH THU NGÀY {date_str} (LÚC 22:00)</b>
 
 🛒 <b>Tổng đơn:</b> 0 đơn
 👕 <b>Tổng sản phẩm:</b> 0 món
@@ -102,22 +103,22 @@ async def send_daily_revenue_report(target_date: Optional[str] = None) -> bool:
     orders_detail = []
     for idx, o in enumerate(orders, 1):
         t_tien = f"{o.get('tong_tien', 0):,}".replace(",", ".")
-        khach = html.escape(str(o.get('ten_khach_hang', 'Khách')))
+        khach = html.escape(str(o.get('ten_khach_hang', 'Khách hàng')))
         sdt = html.escape(str(o.get('so_dien_thoai', '')))
         sl = o.get('so_luong', 0)
-        orders_detail.append(f"{idx}. <b>{khach}</b> ({sdt}): {sl} món - <b>{t_tien}đ</b>")
+        orders_detail.append(f"{idx}. <b>Đơn #{idx}</b> ({khach} - {sdt}): {sl} món - <b>{t_tien}đ</b>")
 
     detail_str = "\n".join(orders_detail)
 
-    msg = f"""📊 <b>TỔNG KẾT DOANH THU NGÀY {date_str}</b> 📊
+    msg = f"""📊 <b>TỔNG KẾT DOANH THU NGÀY {date_str} (LÚC 22:00)</b> 📊
 
 🛒 <b>Tổng số đơn:</b> <b>{total_orders}</b> đơn
 👕 <b>Tổng sản phẩm bán ra:</b> <b>{total_items}</b> món
 💰 <b>Tổng doanh thu:</b> <b>{formatted_rev}đ</b>
 
-📋 <b>Danh sách đơn trong ngày:</b>
+📋 <b>Danh sách đơn hôm nay:</b>
 {detail_str}
 
-💪 <i>FITMAN chúc anh em tập luyện hiệu quả và shop ngày mai bão đơn!</i> 🔥"""
+💪 <i>FITMAN chúc shop ngày mai bội thu đơn!</i> 🔥"""
 
     return await send_telegram_message(msg)
