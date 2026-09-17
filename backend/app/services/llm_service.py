@@ -12,14 +12,22 @@ from app.tools.business_rules import tim_anh_san_pham, ALL_ANH_QUAN, ALL_ANH_AO,
 
 logger = logging.getLogger(__name__)
 
-async def generate_response(messages: List[Dict[str, Any]], user_message: str) -> Dict[str, Any]:
+async def generate_response(
+    messages: List[Dict[str, Any]],
+    user_message: str,
+    customer_name: Optional[str] = None,
+    sender_id: Optional[str] = None
+) -> Dict[str, Any]:
     # Chuẩn hóa tiền xử lý mã quần dính liền (ví dụ: 'quần 124' -> 'quần 1, 2, 4')
     normalized_user_message = chuan_hoa_ma_quan(user_message)
 
     # Chuẩn bị danh sách messages đầy đủ
     full_messages = [msg.copy() for msg in messages]
     if not full_messages or full_messages[0].get("role") != "system":
-        full_messages.insert(0, {"role": "system", "content": get_system_prompt()})
+        sys_prompt = get_system_prompt()
+        if customer_name and customer_name != "Khách hàng":
+            sys_prompt += f"\n\nLƯU Ý: Tên của khách hàng đang chat là: {customer_name}. Khi gọi tao_don_hang hãy điền ten_khach_hang='{customer_name}'."
+        full_messages.insert(0, {"role": "system", "content": sys_prompt})
 
     full_messages.append({"role": "user", "content": normalized_user_message})
 
@@ -98,6 +106,12 @@ async def generate_response(messages: List[Dict[str, Any]], user_message: str) -
                 else:
                     f_args = f_args_raw
 
+                if f_name == "tao_don_hang":
+                    if customer_name and (not f_args.get("ten_khach_hang") or f_args.get("ten_khach_hang") == "Khách hàng"):
+                        f_args["ten_khach_hang"] = customer_name
+                    if sender_id and not f_args.get("sender_id"):
+                        f_args["sender_id"] = sender_id
+
                 tool_calls_made.append(f_name)
                 tool_result = {}
 
@@ -175,14 +189,14 @@ async def generate_response(messages: List[Dict[str, Any]], user_message: str) -
             if img not in suggested_images:
                 suggested_images.append(img)
 
-    # Nếu hỏi chung về quần — keyword đủ dài để tránh match nhầm
-    elif any(k in lower_user for k in ["xem ảnh quần", "ảnh quần", "mẫu quần", "xem mẫu quần", "cac mau quan", "các mẫu quần"]):
+    # Nếu hỏi chung về quần hoặc đặt quần chưa có mã — keyword đủ dài để tránh match nhầm
+    elif any(k in lower_user for k in ["xem ảnh quần", "ảnh quần", "mẫu quần", "xem mẫu quần", "cac mau quan", "các mẫu quần", "cái quần", "cặp quần", "lấy quần", "mua quần"]):
         for q_img in ALL_ANH_QUAN:
             if q_img not in suggested_images:
                 suggested_images.append(q_img)
 
-    # Nếu hỏi chung về áo — keyword đủ dài để tránh match nhầm
-    elif any(k in lower_user for k in ["xem ảnh áo", "ảnh áo", "mẫu áo", "xem mẫu áo", "cac mau ao", "các mẫu áo", "xem áo", "gửi áo", "mua áo"]):
+    # Nếu hỏi chung về áo hoặc đặt áo chưa có mã — keyword đủ dài để tránh match nhầm
+    elif any(k in lower_user for k in ["xem ảnh áo", "ảnh áo", "mẫu áo", "xem mẫu áo", "cac mau ao", "các mẫu áo", "xem áo", "gửi áo", "mua áo", "cái áo", "lấy áo", "đặt áo", "áo thun"]):
         for a_img in ALL_ANH_AO:
             if a_img not in suggested_images:
                 suggested_images.append(a_img)

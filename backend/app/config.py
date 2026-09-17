@@ -24,5 +24,7 @@ class Settings(BaseSettings):
     QWEN_API_BASE: str = Field(default="http://127.0.0.1:5001/v1")
     QWEN_FALLBACK_PORT: int = Field(default=8888)
     SERVER_BASE_URL: str = Field(default="")
+    TELEGRAM_BOT_TOKEN: str = Field(default="")
+    TELEGRAM_CHAT_ID: str = Field(default="")
 
 settings = Settings()

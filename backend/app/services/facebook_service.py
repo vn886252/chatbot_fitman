@@ -20,6 +20,22 @@ def _resolve_image_url(image_path: str) -> str:
     return f"{base}{image_path}"
 
 
+async def get_customer_name(recipient_id: str) -> str:
+    """Lấy tên thật của khách hàng từ Facebook Graph API."""
+    if not settings.FB_PAGE_ACCESS_TOKEN or not recipient_id:
+        return "Khách hàng"
+    url = f"https://graph.facebook.com/v19.0/{recipient_id}?fields=first_name,last_name,name&access_token={settings.FB_PAGE_ACCESS_TOKEN}"
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            res = await client.get(url)
+            if res.status_code == 200:
+                data = res.json()
+                return data.get("name") or "Khách hàng"
+    except Exception as e:
+        logger.warning(f"Could not fetch Facebook profile for {recipient_id}: {e}")
+    return "Khách hàng"
+
+
 async def send_text_message(recipient_id: str, text: str) -> bool:
     url = f"https://graph.facebook.com/v19.0/me/messages?access_token={settings.FB_PAGE_ACCESS_TOKEN}"
     payload = {

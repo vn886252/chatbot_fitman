@@ -4,6 +4,10 @@ import sys
 # Thêm thư mục backend vào sys.path để có thể import module 'app' khi chạy trực tiếp file main.py
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
+import asyncio
+import logging
+from datetime import datetime, timezone, timedelta
+from contextlib import asynccontextmanager
 from typing import List, Dict, Any, Optional
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -12,8 +16,46 @@ from pydantic import BaseModel
 from app.config import settings
 from app.routers.webhook import router as webhook_router
 from app.services.llm_service import generate_response
+from app.services.telegram_service import send_daily_revenue_report
 
-app = FastAPI(title="Fitman Sportswear Chatbot API", version="1.0.0")
+logger = logging.getLogger(__name__)
+ICT = timezone(timedelta(hours=7))
+
+
+async def _daily_report_scheduler():
+    """Tự động gửi báo cáo doanh thu ngày tới Telegram vào 22:00 mỗi ngày (giờ VN)."""
+    last_reported_date = ""
+    while True:
+        try:
+            now = datetime.now(timezone.utc).astimezone(ICT)
+            today_str = now.strftime("%Y-%m-%d")
+            # Kiểm tra nếu là 22:00 và chưa báo cáo ngày hôm nay
+            if now.hour == 22 and now.minute == 0 and last_reported_date != today_str:
+                logger.info(f"Triggering automatic daily revenue report for {today_str}...")
+                await send_daily_revenue_report(today_str)
+                last_reported_date = today_str
+            await asyncio.sleep(30)
+        except asyncio.CancelledError:
+            break
+        except Exception as e:
+            logger.error(f"Error in daily report scheduler: {e}")
+            await asyncio.sleep(60)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Khởi động background scheduler báo cáo doanh thu
+    scheduler_task = asyncio.create_task(_daily_report_scheduler())
+    logger.info("Daily revenue report scheduler started (target: 22:00 ICT daily).")
+    yield
+    scheduler_task.cancel()
+    try:
+        await scheduler_task
+    except asyncio.CancelledError:
+        pass
+
+
+app = FastAPI(title="Fitman Sportswear Chatbot API", version="1.0.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -44,7 +86,8 @@ async def root():
         "status": "online",
         "docs": "/docs",
         "webhook_url": "/webhook",
-        "chat_test_url": "/api/chat"
+        "chat_test_url": "/api/chat",
+        "daily_report_url": "/api/report/today"
     }
 
 @app.get("/health")
@@ -58,6 +101,15 @@ async def health():
 async def chat(request: ChatRequest):
     result = await generate_response(request.messages or [], request.message)
     return result
+
+@app.api_route("/api/report/today", methods=["GET", "POST"])
+async def trigger_daily_report():
+    """Endpoint thủ công để kích hoạt gửi báo cáo doanh thu hôm nay qua Telegram."""
+    sent = await send_daily_revenue_report()
+    return {
+        "status": "ok" if sent else "error",
+        "message": "Báo cáo doanh thu hôm nay đã được gửi qua Telegram!" if sent else "Gửi báo cáo qua Telegram thất bại, vui lòng kiểm tra cấu hình!"
+    }
 
 if __name__ == "__main__":
     import uvicorn

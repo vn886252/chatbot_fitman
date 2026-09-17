@@ -144,11 +144,11 @@ def tinh_size(can_nang: float, chieu_cao: float, loai_san_pham: str = "cả hai"
         chieu_cao = chieu_cao / 100
 
     # --- Size Áo ---
-    if can_nang < 62:
+    if can_nang < 60:
         ao = "S"
-    elif can_nang <= 75:
+    elif can_nang <= 72:
         ao = "M"
-    elif can_nang <= 84:
+    elif can_nang <= 81:
         ao = "L"
     else:
         ao = "XL"
@@ -162,9 +162,9 @@ def tinh_size(can_nang: float, chieu_cao: float, loai_san_pham: str = "cả hai"
 
     # --- Size Quần ---
     # Quần chỉ có M, L, XL chia đều 55-100kg
-    if can_nang <= 68:
+    if can_nang <= 66:
         quan = "M"
-    elif can_nang <= 81:
+    elif can_nang <= 75:
         quan = "L"
     else:
         quan = "XL"
@@ -222,4 +222,43 @@ def tinh_gia(so_luong: int) -> dict:
         "tong_tien": tong_tien,
         "tong_tien_format": tong_tien_format,
         "chi_tiet": chi_tiet
+    }
+
+
+async def tao_don_hang(
+    danh_sach_mon: Union[List[str], str],
+    so_luong: int,
+    tong_tien: int,
+    so_dien_thoai: str,
+    dia_chi: str,
+    ten_khach_hang: str = "Khách hàng",
+    sender_id: str = ""
+) -> dict:
+    """
+    Tạo đơn hàng chính thức, lưu vào hệ thống và gửi thông báo đơn mới tới shop owner qua Telegram.
+    """
+    from app.services.order_service import save_order
+    from app.services.telegram_service import send_new_order_notification
+
+    if isinstance(danh_sach_mon, str):
+        danh_sach_mon = [danh_sach_mon]
+
+    order_data = {
+        "ten_khach_hang": str(ten_khach_hang or "Khách hàng"),
+        "danh_sach_mon": danh_sach_mon,
+        "so_luong": int(so_luong),
+        "tong_tien": int(tong_tien),
+        "so_dien_thoai": str(so_dien_thoai),
+        "dia_chi": str(dia_chi),
+        "sender_id": str(sender_id)
+    }
+
+    saved = save_order(order_data)
+    telegram_ok = await send_new_order_notification(saved)
+
+    return {
+        "success": True,
+        "order_id": saved["id"],
+        "message": f"Đơn hàng {saved['id']} đã được ghi nhận và gửi thông báo thành công!",
+        "telegram_notified": telegram_ok
     }

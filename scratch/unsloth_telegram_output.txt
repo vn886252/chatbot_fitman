@@ -1,0 +1,135 @@
+```python
+# order_service.py
+
+import os
+import json
+import uuid
+from datetime import datetime, timezone
+from pathlib import Path
+
+# Đường dẫn tới file orders.json
+ORDERS_FILE = Path(__file__).parent / "data" / "orders.json"
+
+def save_order(order_data: dict) -> dict:
+    # Tạo thư mục nếu chưa tồn tại
+    ORDERS_FILE.parent.mkdir(parents=True, exist_ok=True)
+
+    # Đọc dữ liệu hiện tại
+    if ORDERS_FILE.exists():
+        with open(ORDERS_FILE, 'r', encoding='utf-8') as f:
+            orders = json.load(f)
+    else:
+        orders = []
+
+    # Tạo ID và thời gian
+    now = datetime.now(timezone.utc).astimezone(timezone(offset=timezone.utc, name='UTC+7'))
+    date_str = now.strftime('%Y-%m-%d')
+    order_id = f"ORD-{date_str}-{str(uuid.uuid4())[:4].upper()}"
+
+    order = {
+        "id": order_id,
+        "created_at": now.strftime('%Y-%m-%d %H:%M:%S'),
+        "date": date_str,
+        **order_data
+    }
+
+    orders.append(order)
+
+    # Ghi lại file
+    with open(ORDERS_FILE, 'w', encoding='utf-8') as f:
+        json.dump(orders, f, ensure_ascii=False, indent=2)
+
+    return order
+
+def get_daily_summary(target_date: str = None) -> dict:
+    if target_date is None:
+        now = datetime.now(timezone.utc).astimezone(timezone(offset=timezone.utc, name='UTC+7'))
+        target_date = now.strftime('%Y-%m-%d')
+
+    if ORDERS_FILE.exists():
+        with open(ORDERS_FILE, 'r', encoding='utf-8') as f:
+            orders = json.load(f)
+    else:
+        orders = []
+
+    daily_orders = [o for o in orders if o['date'] == target_date]
+
+    total_items = sum(o['so_luong'] for o in daily_orders)
+    total_revenue = sum(o['tong_tien'] for o in daily_orders)
+    total_orders = len(daily_orders)
+
+    return {
+        "date": target_date,
+        "total_orders": total_orders,
+        "total_items": total_items,
+        "total_revenue": total_revenue,
+        "orders": daily_orders
+    }
+```
+
+```python
+# telegram_service.py
+
+import httpx
+from app.config import settings
+from order_service import get_daily_summary
+
+async def send_telegram_message(text: str, parse_mode: str = "HTML") -> bool:
+    url = f"https://api.telegram.org/bot{settings.TELEGRAM_BOT_TOKEN}/sendMessage"
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.post(url, json={
+                "chat_id": settings.TELEGRAM_CHAT_ID,
+                "text": text,
+                "parse_mode": parse_mode
+            })
+            return response.status_code == 200
+    except Exception:
+        return False
+
+async def send_new_order_notification(order: dict) -> bool:
+    danh_sach_mon = order['danh_sach_mon']
+    so_luong = order['so_luong']
+    tong_tien = order['tong_tien']
+    ten_khach_hang = order['ten_khach_hang']
+    so_dien_thoai = order['so_dien_thoai']
+    dia_chi = order['dia_chi']
+    created_at = order['created_at']
+
+    formatted_tong_tien = f"{tong_tien:,}".replace(",", ".")
+
+    message = f"""🔔 ĐƠN HÀNG MỚI TỪ FITMAN CHATBOT!
+👤 Khách hàng: {ten_khach_hang}
+📞 SĐT: {so_dien_thoai}
+📍 Địa chỉ: {dia_chi}
+📦 Số lượng: {so_luong} món
+📋 Chi tiết:
+{"\n".join([f"  • {item}" for item in danh_sach_mon])}
+💰 Tổng tiền: {formatted_tong_tien} ₫
+⏰ Thời gian: {created_at}"""
+
+    return await send_telegram_message(message)
+
+async def send_daily_revenue_report(target_date: str = None) -> bool:
+    summary = get_daily_summary(target_date)
+    date = summary['date']
+    total_orders = summary['total_orders']
+    total_items = summary['total_items']
+    total_revenue = summary['total_revenue']
+    orders = summary['orders']
+
+    formatted_revenue = f"{total_revenue:,}".replace(",", ".")
+
+    message = f"""📊 BÁO CÁO DOANH THU NGÀY {date}
+🛒 Tổng số đơn: {total_orders}
+👕 Tổng sản phẩm: {total_items}
+💰 Tổng doanh thu: {formatted_revenue} ₫"""
+
+    if orders:
+        message += "\n📋 Chi tiết đơn hàng:"
+        for order in orders:
+            formatted_order_total = f"{order['tong_tien']:,}".replace(",", ".")
+            message += f"\n• {order['ten_khach_hang']} - {formatted_order_total} ₫"
+
+    return await send_telegram_message(message)
+```

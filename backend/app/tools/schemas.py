@@ -1,4 +1,4 @@
-from app.tools.business_rules import tinh_size, tinh_gia, tim_anh_san_pham
+from app.tools.business_rules import tinh_size, tinh_gia, tim_anh_san_pham, tao_don_hang
 
 FITMAN_TOOLS = [
     {
@@ -60,11 +60,50 @@ FITMAN_TOOLS = [
                 "required": ["ma_san_pham_hoac_tu_khoa"]
             }
         }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "tao_don_hang",
+            "description": "Tạo đơn hàng chính thức và gửi thông báo đơn mới đến shop owner qua Telegram. BẮT BUỘC GỌI TOOL NÀY KHI ĐƠN ĐÃ ĐỦ 4 YẾU TỐ: (1) Mã sản phẩm cụ thể (áo 30, quần 1...), (2) Size chữ (S, M, L, XL), (3) SĐT thật 10 số, (4) Địa chỉ giao hàng cụ thể. CẤM gọi tool này nếu thiếu bất kỳ yếu tố nào!",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "ten_khach_hang": {
+                        "type": "string",
+                        "description": "Tên khách hàng (nếu biết, mặc định 'Khách hàng')"
+                    },
+                    "danh_sach_mon": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Danh sách các món cụ thể kèm size (ví dụ: ['1 áo mẫu 30 (size M)', '1 áo mẫu 31 (size M)', '1 quần mẫu 1 (size L)']"
+                    },
+                    "so_luong": {
+                        "type": "integer",
+                        "description": "Tổng số lượng món hàng (ví dụ: 3, 5)"
+                    },
+                    "tong_tien": {
+                        "type": "integer",
+                        "description": "Tổng số tiền của đơn hàng (ví dụ: 300000, 400000, 660000)"
+                    },
+                    "so_dien_thoai": {
+                        "type": "string",
+                        "description": "Số điện thoại nhận hàng của khách (ví dụ: '0794763225')"
+                    },
+                    "dia_chi": {
+                        "type": "string",
+                        "description": "Địa chỉ nhận hàng cụ thể của khách"
+                    }
+                },
+                "required": ["danh_sach_mon", "so_luong", "tong_tien", "so_dien_thoai", "dia_chi"]
+            }
+        }
     }
 ]
 
 AVAILABLE_FUNCTIONS = {
     "tinh_size": tinh_size,
     "tinh_gia": tinh_gia,
-    "tim_anh_san_pham": tim_anh_san_pham
+    "tim_anh_san_pham": tim_anh_san_pham,
+    "tao_don_hang": tao_don_hang
 }

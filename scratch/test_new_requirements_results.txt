@@ -1,0 +1,69 @@
+============================================================
+TEST 1: KHÁCH ĐẶT HÀNG NHƯNG CHƯA CÓ MÃ CỤ THỂ (CHỈ NÓI 2 ÁO)
+============================================================
+User: Lấy cho anh 2 cái áo size L ship về 123 Lê Lợi, SĐT 0901234567
+Tools called: []
+Suggested images: ['/static/products/nhom_1.jpg', '/static/products/nhom_2.jpg', '/static/products/nhom_4.jpg', '/static/products/nhom_5.jpg', '/static/products/nhom_6.jpg']
+Bot reply:
+Dạ anh cho em xin chiều cao và cân nặng để em tư vấn size và gửi ảnh mẫu áo cho anh chọn mã nhé! 👕💪
+
+Check 1: KHÔNG chốt đơn khi chưa có mã cụ thể: PASS
+Check 2: Có gửi ảnh/bảo khách chọn mẫu áo: PASS
+
+============================================================
+TEST 2: KHÁCH ĐẶT CHUNG CHUNG KHÔNG RÕ ÁO HAY QUẦN ('Lấy tôi 3 cái')
+============================================================
+User: Lấy tôi 3 cái đi shop
+Bot reply:
+Dạ, anh muốn lấy 3 cái áo hay quần đùi tập gym ạ? Anh cho em biết để em gửi ảnh cho anh chọn mẫu ưng ý nha! 👕👖
+
+Check 1: KHÔNG chốt đơn: PASS
+Check 2: Có hỏi/gợi ý áo hoặc quần để chọn mẫu: PASS
+
+============================================================
+TEST 3: ĐẶT HÀNG ĐẦY ĐỦ 4 YẾU TỐ -> TẠO ĐƠN & BẮN TELEGRAM
+============================================================
+User: lấy tôi áo 30 31 quần 124 đi shop
+Bot reply: Dạ, anh chọn 2 áo và 3 quần nha ạ! 👕👖
+
+Anh cho em xin chiều cao và cân nặng để em tư vấn size chuẩn cho mình ạ! 💪
+
+User: cao 1m70 nặng 70kg
+Bot reply: Dạ, sau khi tính size, em tư vấn cho anh như sau:
+
+- **Áo:** Size M
+- **Quần:** Size L
+
+**Tổng đơn hàng của anh:**
+- **5 món:** áo 30, áo 31, quần 1, quần 2, quần 4
+- **Tổng tiền:** *660.000đ* (freeship) 📦
+
+Anh cho em xin số điện thoại và địa chỉ cụ thể để em lên đơn cho mình nha! 😊
+
+User: SĐT 0794763225, ship tới 27 Lê Lợi, Phường Bến Nghé, Quận 1, TP.HCM nha shop
+Tools called: ['tao_don_hang']
+Bot reply:
+Dạ, đơn hàng của anh đã được ghi nhận thành công! 
+
+**Chi tiết đơn hàng:**
+- 1 áo mẫu 30 (size M)
+- 1 áo mẫu 31 (size M)
+- 1 quần mẫu 1 (size L)
+- 1 quần mẫu 2 (size L)
+- 1 quần mẫu 4 (size L)
+
+**Tổng tiền:** *660.000đ* (freeship) 📦
+
+**Ship tới:** *27 Lê Lợi, Phường Bến Nghé, Quận 1, TP.HCM*  
+**SĐT:** *0794763225*
+
+Dạ, em cảm ơn anh đã ủng hộ shop! 💪 Chúc anh có những buổi tập thật hiệu quả! 😊
+
+Check 1: Đã gọi tool tao_don_hang: PASS
+Check 2: Đơn đã lưu vào orders.json: PASS
+Total orders today: 1, Total revenue: 660,000đ
+
+============================================================
+TEST 4: TỔNG KẾT DOANH THU NGÀY VÀ GỬI TELEGRAM
+============================================================
+Check: Báo cáo doanh thu gửi Telegram thành công: PASS

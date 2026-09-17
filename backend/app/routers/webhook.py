@@ -3,7 +3,7 @@ from collections import defaultdict
 from fastapi import APIRouter, Request, Response
 from app.config import settings
 from app.services.llm_service import generate_response
-from app.services.facebook_service import send_text_message, send_image_message
+from app.services.facebook_service import send_text_message, send_image_message, get_customer_name
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -64,7 +64,15 @@ async def handle_webhook(request: Request):
                         # Lấy lịch sử hội thoại của user này
                         history = _trim_history(_conversation_history[sender_id])
 
-                        res = await generate_response(history, user_text)
+                        # Lấy tên khách hàng từ Facebook Graph API
+                        customer_name = await get_customer_name(sender_id)
+
+                        res = await generate_response(
+                            history,
+                            user_text,
+                            customer_name=customer_name,
+                            sender_id=sender_id
+                        )
                         reply_text = res.get("reply_text", "")
                         suggested_images = res.get("suggested_images") or []
                         if not suggested_images and res.get("suggested_image"):
