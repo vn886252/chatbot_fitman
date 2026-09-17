@@ -111,6 +111,43 @@ async def generate_response(
                         f_args = f_args_raw
 
                     if f_name == "tao_don_hang":
+                        # Chống bịa SĐT: Kiểm tra xem SĐT có thật sự do người dùng nhắn hay không
+                        user_messages_text = " ".join([m.get("content", "") for m in full_messages if m.get("role") == "user"])
+                        clean_passed_phone = re.sub(r'\D', '', str(f_args.get("so_dien_thoai") or ""))
+                        all_user_digits = re.sub(r'\D', '', user_messages_text)
+
+                        if len(clean_passed_phone) < 10 or clean_passed_phone not in all_user_digits:
+                            tool_calls_made.append(f_name)
+                            tool_result = {
+                                "success": False,
+                                "error": "Khách hàng CHƯA cung cấp số điện thoại này trong tin nhắn! Bạn đang tự bịa SĐT. Tuyệt đối CẤM tạo đơn khi khách chưa gửi SĐT, hãy hỏi khách số điện thoại nhận hàng trước!"
+                            }
+                            full_messages.append({
+                                "role": "tool",
+                                "tool_call_id": tc.get("id", f"call_{turn}_{f_name}"),
+                                "name": f_name,
+                                "content": json.dumps(tool_result, ensure_ascii=False)
+                            })
+                            continue
+
+                        # Chống bịa Địa chỉ: Kiểm tra xem địa chỉ có được khách nhắn trong tin nhắn không
+                        passed_addr = str(f_args.get("dia_chi") or "").strip()
+                        addr_tokens = [t.lower() for t in re.findall(r'[\w\d]+', passed_addr) if len(t) >= 3 and t.lower() not in ["quận", "huyện", "phường", "đường", "tỉnh", "thành", "phố", "tphcm", "hcm", "vietnam"]]
+                        has_addr_match = any(t in user_messages_text.lower() for t in addr_tokens)
+                        if not has_addr_match and not any(k in user_messages_text.lower() for k in ["giao", "ship", "địa chỉ", "nhận", "nhà"]):
+                            tool_calls_made.append(f_name)
+                            tool_result = {
+                                "success": False,
+                                "error": "Khách hàng CHƯA cung cấp địa chỉ giao hàng này trong tin nhắn! Bạn đang tự bịa địa chỉ. Tuyệt đối CẤM tạo đơn khi khách chưa gửi địa chỉ, hãy hỏi khách địa chỉ nhận hàng cụ thể trước!"
+                            }
+                            full_messages.append({
+                                "role": "tool",
+                                "tool_call_id": tc.get("id", f"call_{turn}_{f_name}"),
+                                "name": f_name,
+                                "content": json.dumps(tool_result, ensure_ascii=False)
+                            })
+                            continue
+
                         if customer_name and (not f_args.get("ten_khach_hang") or f_args.get("ten_khach_hang") == "Khách hàng"):
                             f_args["ten_khach_hang"] = customer_name
                         if sender_id and not f_args.get("sender_id"):

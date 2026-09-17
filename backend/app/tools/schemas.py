@@ -1,4 +1,4 @@
-from app.tools.business_rules import tinh_size, tinh_gia, tim_anh_san_pham, tao_don_hang
+from app.tools.business_rules import tinh_size, tinh_gia, tim_anh_san_pham, tao_don_hang, goi_y_upsell
 
 FITMAN_TOOLS = [
     {
@@ -98,6 +98,28 @@ FITMAN_TOOLS = [
                 "required": ["danh_sach_mon", "so_luong", "tong_tien", "so_dien_thoai", "dia_chi"]
             }
         }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "goi_y_upsell",
+            "description": "Lấy gợi ý và kịch bản upsell chuẩn theo chính sách của Fitman: (1) Khách chọn 1 món (180k ship 30k) -> gợi ý mua thêm 1 món (nếu mua áo thì gợi ý thêm quần đùi) để thành combo 2 món 300k FREESHIP (bù thêm 120k). (2) Khách chọn 2 món (ví dụ 2 quần hoặc 2 áo) -> offer thêm 1 món (ví dụ mua 2 quần thì offer thêm 1 áo) CHỈ THÊM ĐÚNG 100K là được combo 3 món 400k cực kỳ hời. Bắt buộc gọi tool này khi khách chọn 1 hoặc 2 món!",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "so_luong": {
+                        "type": "integer",
+                        "description": "Số lượng món hiện tại khách đang chọn (1 hoặc 2)"
+                    },
+                    "danh_sach_mon": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Danh sách các món khách đã chọn (ví dụ: ['áo 46'] hoặc ['2 quần mẫu 1 và 3'])"
+                    }
+                },
+                "required": ["so_luong"]
+            }
+        }
     }
 ]
 
@@ -105,5 +127,6 @@ AVAILABLE_FUNCTIONS = {
     "tinh_size": tinh_size,
     "tinh_gia": tinh_gia,
     "tim_anh_san_pham": tim_anh_san_pham,
-    "tao_don_hang": tao_don_hang
+    "tao_don_hang": tao_don_hang,
+    "goi_y_upsell": goi_y_upsell
 }

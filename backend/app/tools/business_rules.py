@@ -197,12 +197,13 @@ def tinh_gia(so_luong: int) -> dict:
         freeship = False
         tong_tien = 180000
         chi_tiet = "1 món: 150.000đ + 30.000đ phí ship = 180.000đ"
-        upsell_hint = "Khách chỉ mua 1 món (180k gồm 30k ship). BẮT BUỘC BẠN PHẢI GỢI Ý (UPSELL): Anh lấy thêm 1 món nữa (áo hoặc quần) thành combo 2 món chỉ 300k được FREESHIP luôn ạ, bù thêm có 120k là có thêm 1 món mà không tốn tiền ship!"
+        upsell_hint = "Khách chọn 1 món (180k gồm 30k ship). BẮT BUỘC BẠN PHẢI GỢI Ý (UPSELL): Anh lấy thêm 1 món nữa (nếu chọn áo thì gợi ý quần đùi gym) thành combo 2 món chỉ 300k được FREESHIP luôn ạ, bù thêm có 120k là có thêm 1 món mà không tốn 30k tiền ship!"
     elif so_luong == 2:
         phi_ship = 0
         freeship = True
         tong_tien = 300000
         chi_tiet = "2 món: 300.000đ (Freeship)"
+        upsell_hint = "Khách chọn 2 món (300k freeship). BẮT BUỘC BẠN PHẢI GỢI Ý (UPSELL CỰC HỜI): Combo 3 món của shop là 400k freeship, nghĩa là CHỈ CẦN THÊM ĐÚNG 100K là có thêm món thứ 3 (nếu khách mua 2 quần thì offer thêm 1 áo chỉ thêm 100k, nếu mua 2 áo thì offer thêm 1 quần chỉ thêm 100k) cực kỳ hời!"
     elif so_luong == 3:
         phi_ship = 0
         freeship = True
@@ -228,6 +229,69 @@ def tinh_gia(so_luong: int) -> dict:
     if upsell_hint:
         res["upsell_hint"] = upsell_hint
     return res
+
+
+def goi_y_upsell(so_luong: int, danh_sach_mon: Optional[Union[List[str], str]] = None) -> dict:
+    """
+    Gợi ý kịch bản upsell thông minh theo hành vi chọn đồ của khách:
+    1. Khách mua 1 món (180k gồm 30k ship):
+       - Gợi ý thêm 1 món chéo (mua áo -> gợi ý quần đùi; mua quần -> gợi ý áo thun gym).
+       - Trở thành combo 2 món 300k FREESHIP (bù thêm 120k).
+    2. Khách mua 2 món (300k freeship):
+       - Gợi ý thêm 1 món chéo (mua 2 quần -> offer thêm 1 áo; mua 2 áo -> offer thêm 1 quần).
+       - CHỈ CẦN THÊM ĐÚNG 100K là được combo 3 món 400k cực hời (thay vì giá lẻ 150k)!
+    """
+    if isinstance(danh_sach_mon, str):
+        danh_sach_mon = [danh_sach_mon]
+    danh_sach_mon = danh_sach_mon or []
+    text_mon = " ".join(danh_sach_mon).lower()
+
+    co_ao = any(k in text_mon for k in ["áo", "ao", "thun", "oversize", "cbum", "wolves"])
+    co_quan = any(k in text_mon for k in ["quần", "quan", "short", "đùi", "dui", "q1", "q2", "q3", "q4", "q6", "q7"])
+
+    if co_ao and not co_quan:
+        loai_hien_tai = "áo"
+        loai_goi_y = "quần đùi tập gym"
+    elif co_quan and not co_ao:
+        loai_hien_tai = "quần"
+        loai_goi_y = "áo thun oversize tập gym"
+    else:
+        loai_hien_tai = "sản phẩm"
+        loai_goi_y = "áo hoặc quần đùi tập gym"
+
+    if so_luong == 1:
+        loi_khuyen = (
+            f"Dạ {loai_hien_tai} của anh là 180k (đã gồm 30k ship) ạ. "
+            f"Shop em đang có ưu đãi combo 2 món chỉ 300k là được FREESHIP luôn ạ, tính ra bù thêm có 120k là anh có thêm 1 {loai_goi_y} "
+            f"mặc phối trọn bộ tập cực đẹp mà lại không tốn 30k tiền ship! Anh có muốn chọn thêm 1 mẫu nữa để được freeship không em gửi ảnh anh xem nha? 🔥"
+        )
+        return {
+            "so_luong_hien_tai": 1,
+            "gia_hien_tai": "180.000đ (gồm 30k ship)",
+            "loi_khuyen_upsell": loi_khuyen,
+            "combo_muc_tieu": "2 món 300.000đ (Freeship)",
+            "so_tien_bu_them": "120.000đ",
+            "mon_goi_y": loai_goi_y
+        }
+    elif so_luong == 2:
+        loi_khuyen = (
+            f"Dạ 2 {loai_hien_tai} của anh là 300k và đã được FREESHIP rồi ạ! "
+            f"Nhưng Fitman đang có combo 3 món chỉ 400k, tính ra anh lấy thêm 1 {loai_goi_y} nữa CHỈ THÊM CÓ ĐÚNG 100K thôi cực kỳ hời luôn ạ (giá gốc 150k)! "
+            f"Anh có muốn chọn thêm 1 {loai_goi_y} cho đủ bộ mặc tập cả tuần không em gửi mẫu anh xem nha? 🔥"
+        )
+        return {
+            "so_luong_hien_tai": 2,
+            "gia_hien_tai": "300.000đ (Freeship)",
+            "loi_khuyen_upsell": loi_khuyen,
+            "combo_muc_tieu": "Combo 3 món 400.000đ (Freeship)",
+            "so_tien_bu_them": "100.000đ",
+            "mon_goi_y": loai_goi_y
+        }
+    else:
+        return {
+            "so_luong_hien_tai": so_luong,
+            "loi_khuyen_upsell": "Đơn hàng đã đạt combo ưu đãi tốt nhất của shop rồi ạ! 💪"
+        }
 
 
 async def tao_don_hang(
