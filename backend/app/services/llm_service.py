@@ -8,17 +8,20 @@ import httpx
 from app.config import settings
 from app.prompts.system_prompt import get_system_prompt
 from app.tools.schemas import FITMAN_TOOLS, AVAILABLE_FUNCTIONS
-from app.tools.business_rules import tim_anh_san_pham, ALL_ANH_QUAN, ALL_ANH_AO
+from app.tools.business_rules import tim_anh_san_pham, ALL_ANH_QUAN, ALL_ANH_AO, chuan_hoa_ma_quan
 
 logger = logging.getLogger(__name__)
 
 async def generate_response(messages: List[Dict[str, Any]], user_message: str) -> Dict[str, Any]:
+    # Chuẩn hóa tiền xử lý mã quần dính liền (ví dụ: 'quần 124' -> 'quần 1, 2, 4')
+    normalized_user_message = chuan_hoa_ma_quan(user_message)
+
     # Chuẩn bị danh sách messages đầy đủ
     full_messages = [msg.copy() for msg in messages]
     if not full_messages or full_messages[0].get("role") != "system":
         full_messages.insert(0, {"role": "system", "content": get_system_prompt()})
 
-    full_messages.append({"role": "user", "content": user_message})
+    full_messages.append({"role": "user", "content": normalized_user_message})
 
     # Xác định endpoint và header
     if settings.USE_LOCAL_LLM or not settings.OPENAI_API_KEY:

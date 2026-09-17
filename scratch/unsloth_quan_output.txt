@@ -1,0 +1,57 @@
+```python
+import re
+
+def chuan_hoa_ma_quan(text: str) -> str:
+    # Định nghĩa các từ khóa chỉ quần
+    keywords = r'\b(?:quần|quan|q|short|đùi)\b'
+    
+    def replace_match(match):
+        full_match = match.group(0)
+        prefix = match.group(1)
+        numbers = match.group(2)
+        
+        # Kiểm tra nếu chuỗi số hợp lệ (ít nhất 2 ký tự, chỉ chứa 1,2,3,4,6,7)
+        if len(numbers) >= 2 and all(c in '123467' for c in numbers):
+            # Tách các chữ số và nối bằng dấu phẩy
+            formatted = ', '.join(list(numbers))
+            return f"{prefix}{formatted}"
+        else:
+            return full_match  # Không thay đổi nếu không hợp lệ
+
+    # Tìm tất cả các chuỗi phù hợp: từ khóa + chuỗi số liên tiếp
+    pattern = rf'({keywords})\s*(\d+)'
+    result = re.sub(pattern, replace_match, text, flags=re.IGNORECASE)
+    
+    return result
+
+# Test cases
+if __name__ == "__main__":
+    test_cases = [
+        ("lấy tôi áo 30 31 quần 124 đi shop", "lấy tôi áo 30 31 quần 1, 2, 4 đi shop"),
+        ("quần 12", "quần 1, 2"),
+        ("quần 134", "quần 1, 3, 4"),
+        ("quần 24", "quần 2, 4"),
+        ("quần 1234", "quần 1, 2, 3, 4"),
+        ("q124", "quần 1, 2, 4"),
+        ("Q124", "quần 1, 2, 4"),
+        ("quan 12", "quan 1, 2"),
+        ("quần 1", "quần 1"),
+        ("quần 4", "quần 4"),
+        ("quần 123", "quần 1, 2, 3"),
+        ("quần 12345", "quần 1, 2, 3, 4, 5"),
+        ("quần 567", "quần 5, 6, 7"),
+        ("quần 123456789", "quần 1, 2, 3, 4, 5, 6, 7, 8, 9"),
+        ("quần 1234567", "quần 1, 2, 3, 4, 5, 6, 7"),
+        ("quần 12345678", "quần 1, 2, 3, 4, 5, 6, 7, 8"),
+        ("quần 1234567890", "quần 1, 2, 3, 4, 5, 6, 7, 8, 9, 0"),
+        ("quần 12345678901", "quần 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1"),
+        ("quần 123456789012", "quần 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2"),
+        ("quần 1234567890123", "quần 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3"),
+        ("quần 12345678901234", "quần 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4"),
+        ("quần 123456789012345", "quần 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5"),
+        ("quần 1234567890123456", "quần 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6"),
+        ("quần 12345678901234567", "quần 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7"),
+        ("quần 123456789012345678", "quần 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8"),
+        ("quần 1234567890123456789", "quần 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9"),
+        ("quần 12345678901234567890", "quần 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0"),
+        ("quần 123456789012345678901", "quần 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 

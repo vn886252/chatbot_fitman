@@ -1,0 +1,14 @@
+```python
+def tinh_bmi(kg, cm):
+    height_m = cm / 100
+    bmi = kg / (height_m ** 2)
+    if bmi < 18.5:
+        loai = "Thiếu cân"
+    elif 18.5 <= bmi < 25:
+        loai = "Bình thường"
+    elif 25 <= bmi < 30:
+        loai = "Thừa cân"
+    else:
+        loai = "Béo phì"
+    return bmi, loai
+```

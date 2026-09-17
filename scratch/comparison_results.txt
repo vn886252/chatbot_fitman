@@ -1,0 +1,66 @@
+======================================================================
+SO SANH 2 QWEN ENDPOINTS - FITMAN CHATBOT BUG SCENARIOS
+======================================================================
+
+Scenario: BUG1_xem_mau
+Endpoint: KoboldCpp (port 5001)
+Time: 4.8s
+Usage: {"prompt_tokens": 308, "completion_tokens": 102, "total_tokens": 410}
+Has markdown image: False
+Reply:
+
+
+Da cho xem hinh anh mau san pham.
+--------------------------------------------------
+Scenario: BUG1_xem_mau
+Endpoint: Unsloth (port 8888)
+Time: 0.0s
+Usage: {}
+Has markdown image: False
+Reply:
+ERROR: <urlopen error [WinError 10061] No connection could be made because the target machine actively refused it>
+--------------------------------------------------
+Scenario: BUG2_dem_so_luong
+Endpoint: KoboldCpp (port 5001)
+Time: 10.3s
+Usage: {"prompt_tokens": 529, "completion_tokens": 233, "total_tokens": 762}
+Has markdown image: False
+Reply:
+
+
+Da xac nhan don hang cua anh:
+
+- 2 áo size M (màu 46 + màu 47)
+- Tổng: 300.000d (Freeship)
+- Giao: 27 Le Loi P6 Soc Trang
+- SĐT: 0794763225
+
+Anh xac nhan la em len don giao hang cho minh nha! 📦
+--------------------------------------------------
+Scenario: BUG2_dem_so_luong
+Endpoint: Unsloth (port 8888)
+Time: 0.0s
+Usage: {}
+Has markdown image: False
+Reply:
+ERROR: <urlopen error [WinError 10061] No connection could be made because the target machine actively refused it>
+--------------------------------------------------
+
+======================================================================
+TONG KET
+======================================================================
+
+[KoboldCpp (port 5001)]
+  Tong thoi gian: 15.1s
+  Prompt tokens: 837
+  Completion tokens: 335
+  Total tokens: 1172
+  Markdown image bugs: 0/2
+
+[Unsloth (port 8888)]
+  Tong thoi gian: 0.0s
+  Prompt tokens: 0
+  Completion tokens: 0
+  Total tokens: 0
+  Markdown image bugs: 0/2
+

@@ -1,3 +1,4 @@
+import re
 from typing import Dict, List, Union, Optional, Any
 
 # Danh mục nhóm sản phẩm & bảng size chuẩn theo hệ thống Fitman
@@ -30,6 +31,29 @@ ALL_ANH_AO = [
 ANH_BANG_SIZE = ["/static/products/bang_size.jpg"]
 
 
+def chuan_hoa_ma_quan(text: str) -> str:
+    """
+    Chuẩn hóa các mã quần dính liền (như 'quần 124', 'q124', 'quan 12', 'quần 134', 'quần 24', 'quần 1234')
+    thành dạng danh sách mã riêng biệt (như 'quần 1, 2, 4').
+    Quần short của Fitman chỉ có các mã đơn lẻ: 1, 2, 3, 4, 6, 7.
+    """
+    if not text:
+        return text
+
+    pattern = re.compile(
+        r'(?i)\b(quần|quan|q|short|đùi)\s*([123467]{2,4})\b'
+    )
+
+    def replace_match(m):
+        prefix = m.group(1)
+        digits = m.group(2)
+        clean_prefix = "quần" if prefix.lower() in ("q", "quần", "quan") else prefix
+        formatted_numbers = ", ".join(digits)
+        return f"{clean_prefix} {formatted_numbers}"
+
+    return pattern.sub(replace_match, text)
+
+
 def tim_anh_san_pham(ma_san_pham_hoac_tu_khoa: str) -> Dict[str, Any]:
     """
     Tìm danh sách ảnh sản phẩm hoặc bảng size dựa trên mã sản phẩm hoặc từ khóa tìm kiếm.
@@ -38,7 +62,10 @@ def tim_anh_san_pham(ma_san_pham_hoac_tu_khoa: str) -> Dict[str, Any]:
     if not ma_san_pham_hoac_tu_khoa:
         return {"ma": "", "image_url": "", "image_urls": [], "found": False}
 
-    tu_khoa = str(ma_san_pham_hoac_tu_khoa).strip()
+    # Tiền xử lý chuẩn hóa mã quần dính liền (ví dụ: 'quần 124' -> 'quần 1, 2, 4')
+    ma_san_pham_hoac_tu_khoa = chuan_hoa_ma_quan(str(ma_san_pham_hoac_tu_khoa))
+
+    tu_khoa = ma_san_pham_hoac_tu_khoa.strip()
     tu_khoa_lower = tu_khoa.lower()
     tu_khoa_upper = tu_khoa.upper()
 
