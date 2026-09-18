@@ -85,7 +85,7 @@ class TestWebhookAndRoutes:
             assert response.status_code == 200
             assert response.json() == {"status": "EVENT_RECEIVED"}
 
-            mock_llm.assert_awaited_once_with([], "Tôi cao 1m62 nặng 68kg mặc size gì thế shop?")
+            mock_llm.assert_awaited_once_with([], "Tôi cao 1m62 nặng 68kg mặc size gì thế shop?", customer_name="Khách hàng", sender_id="user_psid_12345")
             mock_send_text.assert_awaited_once_with("user_psid_12345", "Chào gym bro! Với chiều cao 1m62 và nặng 68kg, size chuẩn của bạn là Size L nha.")
             mock_send_img.assert_awaited_once_with("user_psid_12345", "/static/products/bang_size.jpg")
 

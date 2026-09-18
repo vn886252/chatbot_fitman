@@ -1,5 +1,6 @@
 import httpx
 from app.config import settings
+from app.services.handover_service import record_bot_sent
 import logging
 
 logger = logging.getLogger(__name__)
@@ -47,6 +48,13 @@ async def send_text_message(recipient_id: str, text: str) -> bool:
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.post(url, json=payload)
             if response.status_code == 200:
+                try:
+                    res_json = response.json()
+                    mid = res_json.get("message_id")
+                    if mid:
+                        record_bot_sent(mid)
+                except Exception:
+                    pass
                 return True
             else:
                 logger.error(f"Failed to send text message: {response.status_code} - {response.text}")
@@ -78,6 +86,13 @@ async def send_image_message(recipient_id: str, image_url: str) -> bool:
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.post(url, json=payload)
             if response.status_code == 200:
+                try:
+                    res_json = response.json()
+                    mid = res_json.get("message_id")
+                    if mid:
+                        record_bot_sent(mid)
+                except Exception:
+                    pass
                 return True
             else:
                 logger.error(f"Failed to send image message: {response.status_code} - {response.text}")

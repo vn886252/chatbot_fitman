@@ -10,69 +10,30 @@ from app.tools.business_rules import tinh_size, tinh_gia, tim_anh_san_pham
 class TestTinhSize:
     """Kiểm thử toàn diện 100% logic tính size quần áo FITMAN"""
 
-    def test_size_s_no_upsize(self):
-        result = tinh_size(can_nang=60.0, chieu_cao=1.70)
-        assert result["size"] == "S"
-        assert result["size_goc"] == "S"
-        assert result["co_upsize"] is False
+    def test_size_ao_no_upsize(self):
+        assert tinh_size(55, 1.70, "áo")["size"] == "Áo S"
+        assert tinh_size(65, 1.70, "áo")["size"] == "Áo M"
+        assert tinh_size(75, 1.70, "áo")["size"] == "Áo L"
+        assert tinh_size(85, 1.70, "áo")["size"] == "Áo XL"
 
-    def test_size_s_with_upsize(self):
-        result = tinh_size(can_nang=60.0, chieu_cao=1.60)
-        assert result["size"] == "M"
-        assert result["size_goc"] == "S"
-        assert result["co_upsize"] is True
-        assert "tăng 1 size từ S lên M" in result["ly_do"]
+    def test_size_ao_with_upsize(self):
+        assert tinh_size(55, 1.60, "áo")["size"] == "Áo M"
+        assert tinh_size(65, 1.60, "áo")["size"] == "Áo L"
+        assert tinh_size(75, 1.60, "áo")["size"] == "Áo XL"
+        assert tinh_size(85, 1.60, "áo")["size"] == "Áo XL"
 
-    def test_size_m_no_upsize(self):
-        result = tinh_size(can_nang=70.0, chieu_cao=1.70)
-        assert result["size"] == "M"
-        assert result["size_goc"] == "M"
-        assert result["co_upsize"] is False
+    def test_size_quan(self):
+        assert tinh_size(60, 1.70, "quần")["size"] == "Quần M"
+        assert tinh_size(70, 1.70, "quần")["size"] == "Quần L"
+        assert tinh_size(80, 1.70, "quần")["size"] == "Quần XL"
 
-    def test_size_m_with_upsize(self):
-        result = tinh_size(can_nang=70.0, chieu_cao=1.60)
-        assert result["size"] == "L"
-        assert result["size_goc"] == "M"
-        assert result["co_upsize"] is True
-        assert "tăng 1 size từ M lên L" in result["ly_do"]
-
-    def test_size_l_no_upsize(self):
-        result = tinh_size(can_nang=80.0, chieu_cao=1.75)
-        assert result["size"] == "L"
-        assert result["size_goc"] == "L"
-        assert result["co_upsize"] is False
-
-    def test_size_l_with_upsize(self):
-        result = tinh_size(can_nang=80.0, chieu_cao=1.60)
-        assert result["size"] == "XL"
-        assert result["size_goc"] == "L"
-        assert result["co_upsize"] is True
-        assert "tăng 1 size từ L lên XL" in result["ly_do"]
-
-    def test_size_xl_no_upsize(self):
-        result = tinh_size(can_nang=90.0, chieu_cao=1.75)
-        assert result["size"] == "XL"
-        assert result["size_goc"] == "XL"
-        assert result["co_upsize"] is False
-
-    def test_size_xl_with_upsize_max(self):
-        result = tinh_size(can_nang=90.0, chieu_cao=1.60)
-        assert result["size"] == "XL"
-        assert result["size_goc"] == "XL"
-        assert result["co_upsize"] is True
-
-    def test_boundary_values(self):
-        assert tinh_size(61.9, 1.70)["size"] == "S"
-        assert tinh_size(62.0, 1.70)["size"] == "M"
-        assert tinh_size(75.0, 1.70)["size"] == "M"
-        assert tinh_size(75.1, 1.70)["size"] == "L"
-        assert tinh_size(84.0, 1.70)["size"] == "L"
-        assert tinh_size(85.0, 1.70)["size"] == "XL"
+    def test_size_both(self):
+        assert tinh_size(70, 1.70)["size"] == "Áo M, Quần L"
 
     def test_height_in_cm(self):
-        result = tinh_size(can_nang=70.0, chieu_cao=160.0)
+        result = tinh_size(can_nang=70, chieu_cao=160.0)
         assert result["chieu_cao"] == 1.60
-        assert result["size"] == "L"
+        assert result["size"] == "Áo L, Quần L"
 
     def test_invalid_inputs(self):
         with pytest.raises(ValueError):

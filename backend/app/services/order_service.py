@@ -148,3 +148,74 @@ def get_daily_summary(target_date: Optional[str] = None) -> dict:
         "total_revenue": total_revenue,
         "orders": daily_orders
     }
+
+
+def get_period_summary(period_type: str = "today") -> dict:
+    """
+    Tính tổng kết doanh thu và danh sách đơn theo khoảng thời gian:
+    - 'today': hôm nay
+    - 'week': 7 ngày gần nhất (từ today - 6 ngày đến today)
+    - 'month': tháng này (từ ngày 01 đến hôm nay)
+    """
+    now = _get_ict_now()
+    today_str = now.strftime("%Y-%m-%d")
+
+    orders = []
+    if ORDERS_FILE.exists():
+        try:
+            with open(ORDERS_FILE, "r", encoding="utf-8") as f:
+                orders = json.load(f)
+        except Exception as e:
+            logger.error(f"Error reading orders file: {e}")
+            orders = []
+
+    period_type = str(period_type or "today").lower()
+
+    if period_type in ("today", "hom nay", "hôm nay"):
+        start_date = today_str
+        end_date = today_str
+        filtered_orders = [o for o in orders if o.get("date") == today_str]
+        normalized_period = "today"
+    elif period_type in ("week", "tuan", "tuần", "7 ngày", "1 tuần"):
+        start_date = (now - timedelta(days=6)).strftime("%Y-%m-%d")
+        end_date = today_str
+        filtered_orders = [o for o in orders if start_date <= str(o.get("date", "")) <= end_date]
+        normalized_period = "week"
+    elif period_type in ("month", "thang", "tháng", "1 tháng", "tháng này"):
+        start_date = now.strftime("%Y-%m-01")
+        end_date = today_str
+        filtered_orders = [o for o in orders if start_date <= str(o.get("date", "")) <= end_date]
+        normalized_period = "month"
+    else:
+        start_date = today_str
+        end_date = today_str
+        filtered_orders = [o for o in orders if o.get("date") == today_str]
+        normalized_period = "today"
+
+    total_orders = len(filtered_orders)
+    total_items = sum(o.get("so_luong", 0) for o in filtered_orders)
+    total_revenue = sum(o.get("tong_tien", 0) for o in filtered_orders)
+
+    daily_breakdown = {}
+    for o in filtered_orders:
+        d = str(o.get("date", ""))
+        if not d:
+            continue
+        if d not in daily_breakdown:
+            daily_breakdown[d] = {"orders": 0, "revenue": 0, "items": 0}
+        daily_breakdown[d]["orders"] += 1
+        daily_breakdown[d]["revenue"] += o.get("tong_tien", 0)
+        daily_breakdown[d]["items"] += o.get("so_luong", 0)
+
+    sorted_daily_breakdown = dict(sorted(daily_breakdown.items()))
+
+    return {
+        "period_type": normalized_period,
+        "start_date": start_date,
+        "end_date": end_date,
+        "total_orders": total_orders,
+        "total_items": total_items,
+        "total_revenue": total_revenue,
+        "daily_breakdown": sorted_daily_breakdown,
+        "orders": filtered_orders
+    }

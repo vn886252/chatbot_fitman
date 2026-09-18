@@ -26,5 +26,7 @@ class Settings(BaseSettings):
     SERVER_BASE_URL: str = Field(default="")
     TELEGRAM_BOT_TOKEN: str = Field(default="8767221119:AAGUOtUEVgv6u67ClKFwMYukiJOOloLST0k")
     TELEGRAM_CHAT_ID: str = Field(default="1144165826")
+    HANDOVER_TIMEOUT_HOURS: int = Field(default=2)
+    DAILY_REPORT_HOUR: int = Field(default=22)
 
 settings = Settings()
