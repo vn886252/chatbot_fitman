@@ -87,25 +87,79 @@ def tim_anh_san_pham(ma_san_pham_hoac_tu_khoa: str) -> Dict[str, Any]:
 
     image_urls: List[str] = []
 
-    # 0. Khách hỏi xem mẫu chung chung ("cho xem mẫu", "xem mẫu", "mẫu đâu", "mẫu", "mau", "xem mau", "mẫu mới")
-    if any(k in tu_khoa_lower for k in ["cho xem mẫu", "xem mẫu", "mẫu đâu", "cho xem mau", "xem mau", "mẫu mới", "mau moi", "sản phẩm", "san pham"]) or tu_khoa_lower in ("mẫu", "mau"):
+    # 0a. Khách hỏi xem MẪU MỚI ("mẫu mới", "mau moi", "2026", "hàng mới", "hang moi", "mới về", "moi ve", "mới nhất", "moi nhat", "new")
+    is_new_query = (
+        any(k in tu_khoa_lower for k in ["mẫu mới", "mau moi", "2026", "hàng mới", "hang moi", "mới về", "moi ve", "mới nhất", "moi nhat"])
+        or (bool(re.search(r'\bnew\b', tu_khoa_lower)) and not tu_khoa_lower.startswith("new_"))
+    )
+    if is_new_query:
+        try:
+            from app.services.new_models_service import get_new_models
+            new_models = get_new_models()
+            if new_models:
+                image_urls = [m["image_url"] for m in new_models if m.get("image_url")]
+        except Exception:
+            pass
+        if not image_urls:
+            image_urls = ALL_ANH_AO + ALL_ANH_QUAN
+
+    # 0b. Khách hỏi xem MẪU CŨ / BỘ SƯU TẬP TRƯỚC
+    elif any(k in tu_khoa_lower for k in ["mẫu cũ", "mau cu", "mẫu trước", "mau truoc"]):
+        image_urls = list(ALL_ANH_AO + ALL_ANH_QUAN)
+        try:
+            from app.services.new_models_service import get_old_models
+            for m in get_old_models():
+                img = m.get("image_url")
+                if img and img not in image_urls:
+                    image_urls.append(img)
+        except Exception:
+            pass
+
+    # 0c. Khách hỏi xem mẫu chung chung ("cho xem mẫu", "xem mẫu", "mẫu đâu", "mẫu", "mau", "xem mau", "sản phẩm", "san pham")
+    elif any(k in tu_khoa_lower for k in ["cho xem mẫu", "xem mẫu", "mẫu đâu", "cho xem mau", "xem mau", "sản phẩm", "san pham"]) or tu_khoa_lower in ("mẫu", "mau"):
         image_urls = ALL_ANH_AO + ALL_ANH_QUAN
 
     # 1. Khách hỏi xem toàn bộ ảnh Quần
     elif any(k in tu_khoa_lower for k in ["quần", "quan", "short", "đùi"]):
-        # Nếu hỏi cụ thể mã quần (Q1, Q2, Q3, Q4, Q6, Q7)
         matched_specific = False
         for q_code in ["Q1", "Q2", "Q3", "Q4", "Q6", "Q7"]:
             if q_code.lower() in tu_khoa_lower.split() or q_code in tu_khoa_upper.split() or q_code.lower() in tu_khoa_lower:
                 if ANH_THEO_MA.get(q_code) and ANH_THEO_MA[q_code] not in image_urls:
                     image_urls.append(ANH_THEO_MA[q_code])
                 matched_specific = True
+        for word in tu_khoa.split():
+            w_clean = word.strip(".,;:?!-_").upper()
+            try:
+                from app.services.new_models_service import find_model_by_id
+                m = find_model_by_id(w_clean)
+                if m and m.get("image_url") and m["image_url"] not in image_urls:
+                    image_urls.append(m["image_url"])
+                    matched_specific = True
+            except Exception:
+                pass
         if not matched_specific:
             image_urls = ALL_ANH_QUAN
 
     # 2. Khách hỏi xem toàn bộ ảnh Áo hoặc xem mẫu chung
     elif tu_khoa_lower in ("áo", "ao") or any(k in tu_khoa_lower for k in ["mẫu áo", "ảnh áo", "áo thun", "xem áo", "cac mau ao", "các mẫu áo"]):
-        image_urls = ALL_ANH_AO
+        matched_specific = False
+        for word in tu_khoa.split():
+            w_clean = word.strip(".,;:?!-_").upper()
+            if w_clean in ANH_THEO_MA:
+                if ANH_THEO_MA[w_clean] not in image_urls:
+                    image_urls.append(ANH_THEO_MA[w_clean])
+                matched_specific = True
+            else:
+                try:
+                    from app.services.new_models_service import find_model_by_id
+                    m = find_model_by_id(w_clean)
+                    if m and m.get("image_url") and m["image_url"] not in image_urls:
+                        image_urls.append(m["image_url"])
+                        matched_specific = True
+                except Exception:
+                    pass
+        if not matched_specific:
+            image_urls = ALL_ANH_AO
 
     # 3. Khách hỏi bảng size
     elif any(k in tu_khoa_lower for k in ["bảng size", "bang size", "bảng số đo", "bang so do", "size chart", "form size"]):
@@ -115,16 +169,35 @@ def tim_anh_san_pham(ma_san_pham_hoac_tu_khoa: str) -> Dict[str, Any]:
     elif tu_khoa_lower in DANH_MUC_NHOM:
         image_urls = [f"/static/products/{tu_khoa_lower}.jpg"]
 
-    # 5. Tra cứu theo mã sản phẩm cụ thể (1, 5, 21, W1, Q1, 43, ...)
+    # 5. Tra cứu theo mã sản phẩm cụ thể (1, 5, 21, W1, Q1, 43, 48, W8, Q8, ...)
     elif tu_khoa_upper in ANH_THEO_MA:
         image_urls = [ANH_THEO_MA[tu_khoa_upper]]
 
-    # 6. Tìm mã trong từng từ của câu chat
     else:
-        for ma, img in ANH_THEO_MA.items():
-            if ma.lower() in tu_khoa_lower.split():
-                if img not in image_urls:
-                    image_urls.append(img)
+        # Kiểm tra xem mã có nằm trong danh mục mẫu do chủ shop tự đặt không
+        try:
+            from app.services.new_models_service import find_model_by_id
+            m = find_model_by_id(tu_khoa)
+            if m and m.get("image_url"):
+                image_urls = [m["image_url"]]
+        except Exception:
+            pass
+
+        # 6. Nếu chưa tìm thấy mã trực tiếp, tìm mã trong từng từ của câu chat
+        if not image_urls:
+            for word in tu_khoa.split():
+                w_clean = word.strip(".,;:?!-_").upper()
+                if w_clean in ANH_THEO_MA:
+                    if ANH_THEO_MA[w_clean] not in image_urls:
+                        image_urls.append(ANH_THEO_MA[w_clean])
+                else:
+                    try:
+                        from app.services.new_models_service import find_model_by_id
+                        m = find_model_by_id(w_clean)
+                        if m and m.get("image_url") and m["image_url"] not in image_urls:
+                            image_urls.append(m["image_url"])
+                    except Exception:
+                        pass
 
     # Không thêm fallback "ao" ở đây vì dễ match sai (vd: "bao", "bao nhiêu")
 
@@ -363,10 +436,17 @@ async def tao_don_hang(
 
     telegram_ok = await send_new_order_notification(saved)
 
+    is_up = saved.get("is_updated", False)
+    if is_up:
+        msg = f"Đơn hàng {saved['id']} (Đơn #{saved.get('order_number_today', 1)} hôm nay) đã được cập nhật món mới thành công!"
+    else:
+        msg = f"Đơn hàng {saved['id']} (Đơn #{saved.get('order_number_today', 1)} hôm nay) đã được ghi nhận và gửi thông báo thành công!"
+
     return {
         "success": True,
         "order_id": saved["id"],
         "order_number_today": saved.get("order_number_today", 1),
-        "message": f"Đơn hàng {saved['id']} (Đơn #{saved.get('order_number_today', 1)} hôm nay) đã được ghi nhận và gửi thông báo thành công!",
+        "is_updated": is_up,
+        "message": msg,
         "telegram_notified": telegram_ok
     }

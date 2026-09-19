@@ -45,29 +45,10 @@ def save_order(order_data: dict) -> dict:
     now = _get_ict_now()
     date_str = now.strftime("%Y-%m-%d")
 
-    # Đếm số thứ tự đơn trong ngày (Đơn #1, #2, #3...)
-    today_orders = [o for o in orders if o.get("date") == date_str]
-    order_number_today = len(today_orders) + 1
-    order_id = f"ORD-{now.strftime('%y%m%d')}-{order_number_today:03d}"
-
-    danh_sach_mon = order_data.get("danh_sach_mon", [])
-    if isinstance(danh_sach_mon, str):
-        danh_sach_mon = [danh_sach_mon]
-
-    try:
-        so_luong = int(order_data.get("so_luong", len(danh_sach_mon) or 1))
-    except Exception:
-        so_luong = len(danh_sach_mon) or 1
-
-    try:
-        tong_tien = int(order_data.get("tong_tien", 0))
-    except Exception:
-        tong_tien = 0
-
     # Làm sạch tên khách hàng: chống bịa tên mẫu
     raw_name = str(order_data.get("ten_khach_hang") or "").strip()
     hallucinated_names = [
-        "nguyễn văn a", "nguyễn văn tuấn", "trần văn test", "anh nam", 
+        "nguyễn văn a", "nguyễn văn tuấn", "trần văn test", "anh nam",
         "anh tuấn", "anh hùng", "anh minh", "nguyễn văn b", "test", ""
     ]
     if raw_name.lower() in hallucinated_names or not raw_name:
@@ -86,8 +67,89 @@ def save_order(order_data: dict) -> dict:
     else:
         clean_addr = raw_addr
 
-    # Kiểm tra tính hợp lệ của đơn hàng trước khi tạo
+    # Làm sạch SĐT
     clean_phone = re.sub(r'\D', '', str(order_data.get("so_dien_thoai") or "")).strip()
+
+    # Kiểm tra xem có đơn hàng trùng khớp trong ngày không
+    existing_order = None
+    sender_id = str(order_data.get("sender_id") or "").strip()
+    for o in orders:
+        if o.get("date") != date_str:
+            continue
+        # Kiểm tra sender_id nếu cả 2 đều có
+        if sender_id and o.get("sender_id") == sender_id:
+            existing_order = o
+            break
+        # Kiểm tra SĐT nếu cả 2 đều có SĐT hợp lệ
+        o_phone = re.sub(r'\D', '', o.get("so_dien_thoai", "")).strip()
+        if clean_phone and o_phone == clean_phone:
+            existing_order = o
+            break
+
+    danh_sach_mon = order_data.get("danh_sach_mon", [])
+    if isinstance(danh_sach_mon, str):
+        danh_sach_mon = [danh_sach_mon]
+
+    try:
+        so_luong = int(order_data.get("so_luong", len(danh_sach_mon) or 1))
+    except Exception:
+        so_luong = len(danh_sach_mon) or 1
+
+    try:
+        tong_tien = int(order_data.get("tong_tien", 0))
+    except Exception:
+        tong_tien = 0
+
+    # Nếu đã có đơn hàng trong ngày, cập nhật đơn hàng đó
+    if existing_order:
+        logger.info(f"Cập nhật đơn hàng đã tồn tại: {existing_order['id']}")
+
+        # Cập nhật các trường
+        existing_order["danh_sach_mon"] = danh_sach_mon
+        existing_order["so_luong"] = so_luong
+        existing_order["tong_tien"] = tong_tien
+        existing_order["updated_at"] = now.strftime("%Y-%m-%d %H:%M:%S")
+        existing_order["is_updated"] = True
+
+        # Cập nhật thông tin nếu có
+        if clean_name != "Khách hàng":
+            existing_order["ten_khach_hang"] = clean_name
+        if clean_phone and clean_phone != "":
+            existing_order["so_dien_thoai"] = str(order_data.get("so_dien_thoai") or "").strip()
+        if clean_addr != "Chưa có địa chỉ cụ thể":
+            existing_order["dia_chi"] = clean_addr
+
+        # Lưu lại vào file
+        try:
+            with open(ORDERS_FILE, "w", encoding="utf-8") as f:
+                json.dump(orders, f, ensure_ascii=False, indent=2)
+            logger.info(f"Order updated successfully: {existing_order['id']}")
+
+            # Tự động cập nhật thông tin khách hàng vào customers.json
+            sid = str(existing_order.get("sender_id") or "").strip()
+            if sid:
+                try:
+                    from app.services.customer_service import save_customer_profile
+                    save_customer_profile(
+                        sid,
+                        ten_khach_hang=existing_order["ten_khach_hang"],
+                        so_dien_thoai=existing_order["so_dien_thoai"],
+                        dia_chi=existing_order["dia_chi"]
+                    )
+                except Exception as ex:
+                    logger.warning(f"Error auto-updating customer profile: {ex}")
+
+        except Exception as e:
+            logger.error(f"Error writing orders file: {e}")
+
+        return existing_order
+
+    # Nếu chưa có đơn hàng, tạo mới
+    today_orders = [o for o in orders if o.get("date") == date_str]
+    order_number_today = len(today_orders) + 1
+    order_id = f"ORD-{now.strftime('%y%m%d')}-{order_number_today:03d}"
+
+    # Kiểm tra tính hợp lệ của đơn hàng trước khi tạo
     if tong_tien < 100000 or len(clean_phone) < 10 or clean_addr == "Chưa có địa chỉ cụ thể":
         logger.warning(f"Từ chối lưu đơn hàng không hợp lệ: tiền={tong_tien}, SĐT={clean_phone}, địa chỉ={clean_addr}")
         return None
@@ -103,7 +165,8 @@ def save_order(order_data: dict) -> dict:
         "tong_tien": tong_tien,
         "so_dien_thoai": str(order_data.get("so_dien_thoai") or "").strip(),
         "dia_chi": clean_addr,
-        "sender_id": str(order_data.get("sender_id") or "").strip()
+        "sender_id": str(order_data.get("sender_id") or "").strip(),
+        "is_updated": False
     }
 
     orders.append(order)
@@ -112,6 +175,21 @@ def save_order(order_data: dict) -> dict:
         with open(ORDERS_FILE, "w", encoding="utf-8") as f:
             json.dump(orders, f, ensure_ascii=False, indent=2)
         logger.info(f"Order saved successfully: {order_id} for {order['ten_khach_hang']}")
+
+        # Tự động cập nhật thông tin khách hàng vào customers.json
+        sid = str(order.get("sender_id") or "").strip()
+        if sid:
+            try:
+                from app.services.customer_service import save_customer_profile
+                save_customer_profile(
+                    sid,
+                    ten_khach_hang=clean_name,
+                    so_dien_thoai=str(order_data.get("so_dien_thoai") or "").strip(),
+                    dia_chi=clean_addr
+                )
+            except Exception as ex:
+                logger.warning(f"Error auto-updating customer profile: {ex}")
+
     except Exception as e:
         logger.error(f"Error writing orders file: {e}")
 

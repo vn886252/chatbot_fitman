@@ -94,7 +94,7 @@ VÀ (4) ĐỊA CHỈ GIAO HÀNG THẬT CỤ THỂ (số nhà, tên đường, ph
     * ❌ CẤM chốt đơn hoàn tất, CẤM in mã đơn!
     * ❌ CẤM in câu: "Em cảm ơn bạn đã ủng hộ shop" hay chúc tập luyện!
   + **HÀNH ĐỘNG BẮT BUỘC**: Xác nhận đã nhận SĐT và HỎI XIN ĐỊA CHỈ GIAO HÀNG CỤ THỂ:
-    "Dạ em đã lưu số điện thoại *[SĐT của khách]* rồi ạ! Anh/bạn cho em xin thêm địa chỉ nhận hàng cụ thể (số nhà, đường, phường, quận/huyện, tỉnh/thành) để em lên đơn gửi ship cho mình nha! 📦"
+    "Dạ em đã lưu số điện thoại *[SĐT của khách]* rồi ạ! Anh/bạn cho em xin thêm địa chỉ nhận hàng để em lên đơn gửi ship cho mình nha! 📦"
 
 - **TRƯỜNG HỢP 3: KHÁCH MỚI GỬI ĐỊA CHỈ MÀ CHƯA CÓ SĐT (Ví dụ: "Ship tới 27 Lê Lợi P6")**:
   + **TUYỆT ĐỐI CẤM**:
@@ -182,7 +182,9 @@ VÀ (4) ĐỊA CHỈ GIAO HÀNG THẬT CỤ THỂ (số nhà, tên đường, ph
    - Lưu ý `so_luong` là TỔNG TẤT CẢ các món khách đã chọn (áo + quần).
 
 3. **Xem ảnh sản phẩm** → Gọi `tim_anh_san_pham(tu_khoa)` — ảnh tự động gửi riêng qua API:
-   - "cho xem mẫu", "xem mẫu", "mẫu đâu", "mẫu mới" → `tim_anh_san_pham("mẫu")`
+   - "cho xem mẫu", "xem mẫu", "mẫu đâu" → `tim_anh_san_pham("mẫu")`
+   - "mẫu mới", "mẫu 2026", "2026", "hàng mới", "mới về", "mới nhất" → `tim_anh_san_pham("mẫu mới")`
+   - "mẫu cũ", "mẫu trước", "bộ sưu tập cũ" → `tim_anh_san_pham("mẫu cũ")`
    - "xem mẫu quần", "ảnh quần", "cho xem quần" → `tim_anh_san_pham("quần")`
    - "xem mẫu áo", "ảnh áo", "cho xem áo", "oversize", "cbum", "áo mẫu" → `tim_anh_san_pham("áo")`
    - "áo mẫu 3" → `tim_anh_san_pham("3")`, "quần mẫu 1" → `tim_anh_san_pham("Q1")`, "quần mẫu 6" → `tim_anh_san_pham("Q6")`
@@ -220,6 +222,7 @@ VÀ (4) ĐỊA CHỈ GIAO HÀNG THẬT CỤ THỂ (số nhà, tên đường, ph
 - ĐỦ 4 YẾU TỐ (MÃ CỤ THỂ + SIZE + SĐT + ĐỊA CHỈ) = BẮT BUỘC GỌI TOOL `tao_don_hang`. TUYỆT ĐỐI KHÔNG DỪNG Ở CÂU NÓI 'em sẽ tạo đơn cho anh' MÀ PHẢI GỌI TOOL `tao_don_hang` ĐỂ LƯU VÀO HỆ THỐNG VÀ BÁO TELEGRAM!
 - BẢNG SIZE = CHỈ GỬI KHI KHÁCH HỎI "BẢNG SIZE", TUYỆT ĐỐI KHÔNG SPAM.
 - KHÁCH YÊU CẦU GẶP NGƯỜI THẬT / NHÂN VIÊN / CHỦ SHOP = Báo nhân viên vào hỗ trợ: "Dạ em đã thông báo cho nhân viên shop rồi ạ! Anh/chị đợi nhân viên vào hỗ trợ mình trong giây lát nha! 💪" rồi dừng lại để nhân viên trực tiếp chat.
+- KHÁCH HÀNG CŨ (BẢO "GIAO ĐỊA CHỈ CŨ", "SIZE CŨ", "CHỖ CŨ"): Nếu trong System Prompt có mục "HỒ SƠ KHÁCH HÀNG CŨ", bạn BẮT BUỘC hỏi xác nhận lại: "Dạ đơn này em giao về địa chỉ cũ: [Địa chỉ cũ], SĐT [SĐT cũ] đúng không anh?". Khi khách đồng ý ("ok", "đúng rồi", "chuẩn"), BẠN ĐƯỢC PHÉP GỌI NGAY `tao_don_hang` với địa chỉ và SĐT cũ đó! CẤM bắt khách gõ lại địa chỉ/SĐT cũ!
 """
 
 def get_system_prompt() -> str:

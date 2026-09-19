@@ -9,6 +9,7 @@ from app.config import settings
 from app.prompts.system_prompt import get_system_prompt
 from app.tools.schemas import FITMAN_TOOLS, AVAILABLE_FUNCTIONS
 from app.tools.business_rules import tim_anh_san_pham, ALL_ANH_QUAN, ALL_ANH_AO, chuan_hoa_ma_quan
+from app.services.customer_service import get_customer_profile, format_customer_memory_context, save_customer_profile
 
 logger = logging.getLogger(__name__)
 
@@ -21,12 +22,18 @@ async def generate_response(
     # Chuẩn hóa tiền xử lý mã quần dính liền (ví dụ: 'quần 124' -> 'quần 1, 2, 4')
     normalized_user_message = chuan_hoa_ma_quan(user_message)
 
+    customer_profile = get_customer_profile(sender_id) if sender_id else None
+
     # Chuẩn bị danh sách messages đầy đủ
     full_messages = [msg.copy() for msg in messages]
     if not full_messages or full_messages[0].get("role") != "system":
         sys_prompt = get_system_prompt()
         if customer_name and customer_name != "Khách hàng":
             sys_prompt += f"\n\nLƯU Ý: Tên của khách hàng đang chat là: {customer_name}. Khi gọi tao_don_hang hãy điền ten_khach_hang='{customer_name}'."
+        if customer_profile:
+            memory_prompt = format_customer_memory_context(customer_profile)
+            if memory_prompt:
+                sys_prompt += f"\n\n{memory_prompt}"
         full_messages.insert(0, {"role": "system", "content": sys_prompt})
 
     full_messages.append({"role": "user", "content": normalized_user_message})
@@ -111,12 +118,16 @@ async def generate_response(
                         f_args = f_args_raw
 
                     if f_name == "tao_don_hang":
-                        # Chống bịa SĐT: Kiểm tra xem SĐT có thật sự do người dùng nhắn hay không
+                        # Chống bịa SĐT: Kiểm tra xem SĐT có thật sự do người dùng nhắn hay trùng với hồ sơ cũ
                         user_messages_text = " ".join([m.get("content", "") for m in full_messages if m.get("role") == "user"])
                         clean_passed_phone = re.sub(r'\D', '', str(f_args.get("so_dien_thoai") or ""))
                         all_user_digits = re.sub(r'\D', '', user_messages_text)
 
-                        if len(clean_passed_phone) < 10 or clean_passed_phone not in all_user_digits:
+                        saved_phone = re.sub(r'\D', '', str(customer_profile.get("so_dien_thoai") or "")) if customer_profile else ""
+                        saved_addr = str(customer_profile.get("dia_chi") or "").strip().lower() if customer_profile else ""
+                        is_using_saved_phone = bool(saved_phone and clean_passed_phone == saved_phone)
+
+                        if len(clean_passed_phone) < 10 or (clean_passed_phone not in all_user_digits and not is_using_saved_phone):
                             tool_calls_made.append(f_name)
                             tool_result = {
                                 "success": False,
@@ -130,11 +141,13 @@ async def generate_response(
                             })
                             continue
 
-                        # Chống bịa Địa chỉ: Kiểm tra xem địa chỉ có được khách nhắn trong tin nhắn không
+                        # Chống bịa Địa chỉ: Kiểm tra xem địa chỉ có được khách nhắn trong tin nhắn hay trùng với hồ sơ cũ
                         passed_addr = str(f_args.get("dia_chi") or "").strip()
                         addr_tokens = [t.lower() for t in re.findall(r'[\w\d]+', passed_addr) if len(t) >= 3 and t.lower() not in ["quận", "huyện", "phường", "đường", "tỉnh", "thành", "phố", "tphcm", "hcm", "vietnam"]]
                         has_addr_match = any(t in user_messages_text.lower() for t in addr_tokens)
-                        if not has_addr_match and not any(k in user_messages_text.lower() for k in ["giao", "ship", "địa chỉ", "nhận", "nhà"]):
+                        is_using_saved_addr = bool(saved_addr and (passed_addr.lower() in saved_addr or saved_addr in passed_addr.lower()))
+
+                        if not has_addr_match and not is_using_saved_addr and not any(k in user_messages_text.lower() for k in ["giao", "ship", "địa chỉ", "nhận", "nhà", "cũ", "chỗ cũ"]):
                             tool_calls_made.append(f_name)
                             tool_result = {
                                 "success": False,
@@ -163,6 +176,24 @@ async def generate_response(
                                 tool_result = await func(**f_args)
                             else:
                                 tool_result = func(**f_args)
+
+                            # Tự động lưu hồ sơ khách hàng khi tính size
+                            if f_name == "tinh_size" and sender_id and isinstance(tool_result, dict):
+                                try:
+                                    sz = tool_result.get("size", "")
+                                    ao_m = re.search(r'Áo\s*([SMLXL]+)', sz, re.IGNORECASE)
+                                    quan_m = re.search(r'Quần\s*([SMLXL]+)', sz, re.IGNORECASE)
+                                    kw = {
+                                        "chieu_cao": tool_result.get("chieu_cao"),
+                                        "can_nang": tool_result.get("can_nang")
+                                    }
+                                    if ao_m:
+                                        kw["size_ao"] = ao_m.group(1).upper()
+                                    if quan_m:
+                                        kw["size_quan"] = quan_m.group(1).upper()
+                                    save_customer_profile(sender_id, **kw)
+                                except Exception as ex:
+                                    logger.warning(f"Error saving customer size profile: {ex}")
 
                             # Nếu tool trả về image_urls hoặc image_url
                             if isinstance(tool_result, dict):
@@ -235,8 +266,42 @@ async def generate_response(
     is_ordering_with_codes = has_order_verb and has_digits
 
     if not is_ordering_with_codes:
+        # Nếu hỏi xem mẫu mới (tối đa 6 mẫu mới nhất)
+        is_new_query = (
+            any(k in lower_user for k in ["mẫu mới", "mau moi", "2026", "hàng mới", "hang moi", "mới về", "moi ve", "mới nhất", "moi nhat"])
+            or (bool(re.search(r'\bnew\b', lower_user)) and not bool(re.search(r'\bnew_\d+\b', lower_user)))
+        )
+        if is_new_query:
+            try:
+                from app.services.new_models_service import get_new_models
+                new_m = get_new_models()
+                for m in new_m:
+                    img = m.get("image_url")
+                    if img and img not in suggested_images:
+                        suggested_images.append(img)
+            except Exception:
+                pass
+            if not suggested_images:
+                for img in ALL_ANH_AO + ALL_ANH_QUAN:
+                    if img not in suggested_images:
+                        suggested_images.append(img)
+
+        # Nếu hỏi xem mẫu cũ
+        elif any(k in lower_user for k in ["mẫu cũ", "mau cu", "mẫu trước", "mau truoc"]):
+            for img in ALL_ANH_AO + ALL_ANH_QUAN:
+                if img not in suggested_images:
+                    suggested_images.append(img)
+            try:
+                from app.services.new_models_service import get_old_models
+                for m in get_old_models():
+                    img = m.get("image_url")
+                    if img and img not in suggested_images:
+                        suggested_images.append(img)
+            except Exception:
+                pass
+
         # Nếu hỏi xem tất cả (cả áo lẫn quần) hoặc xem mẫu chung
-        if any(k in lower_user for k in ["tất cả", "tat ca", "hết", "het", "xem hết", "all", "cho xem mẫu", "xem mẫu", "mẫu đâu", "xem mau", "cho xem mau", "mẫu mới", "mau moi"]):
+        elif any(k in lower_user for k in ["tất cả", "tat ca", "hết", "het", "xem hết", "all", "cho xem mẫu", "xem mẫu", "mẫu đâu", "xem mau", "cho xem mau"]):
             for img in ALL_ANH_AO + ALL_ANH_QUAN:
                 if img not in suggested_images:
                     suggested_images.append(img)

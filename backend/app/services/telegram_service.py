@@ -11,7 +11,8 @@ logger = logging.getLogger(__name__)
 REPLY_KEYBOARD = {
     "keyboard": [
         [{"text": "📊 Doanh thu Hôm nay"}, {"text": "📅 Doanh thu 7 Ngày"}],
-        [{"text": "🗓️ Doanh thu Tháng này"}, {"text": "❓ Hướng dẫn"}]
+        [{"text": "🗓️ Doanh thu Tháng này"}, {"text": "👕 Quản lý Mẫu mới"}],
+        [{"text": "❓ Hướng dẫn"}]
     ],
     "resize_keyboard": True,
     "persistent": True
@@ -99,6 +100,7 @@ async def send_new_order_notification(order: Dict[str, Any]) -> bool:
     so_luong = order.get("so_luong", 0)
     tong_tien = order.get("tong_tien", 0)
     created_at = html.escape(str(order.get("created_at", "")))
+    is_updated = order.get("is_updated", False)
 
     formatted_tien = f"{tong_tien:,}".replace(",", ".")
 
@@ -110,11 +112,24 @@ async def send_new_order_notification(order: Dict[str, Any]) -> bool:
 
     freeship_text = " (Freeship)" if so_luong >= 2 else " (+30k ship)"
 
-    msg = f"""🔥 <b>ĐƠN HÀNG MỚI (ĐƠN #{order_num} TRONG NGÀY)</b> 🔥
+    # Xử lý tiêu đề và lời kết
+    if is_updated:
+        title = f"🔄 <b>ĐƠN HÀNG ĐÃ ĐƯỢC CẬP NHẬT (ĐƠN #{order_num} TRONG NGÀY)</b> 🔄"
+        footer = f"<i>Chatbot đã cập nhật lại chi tiết món và tổng tiền cho đơn #{order_num}!</i> 💪"
+    else:
+        title = f"🔥 <b>ĐƠN HÀNG MỚI (ĐƠN #{order_num} TRONG NGÀY)</b> 🔥"
+        footer = f"<i>Chatbot đã ghi nhận đơn #{order_num} trong ngày và lưu hệ thống!</i> 💪"
+
+    # Xử lý phần hiển thị khách hàng: xóa 'Khách hàng: Khách hàng', thay bằng định danh SĐT
+    if not ten_khach or ten_khach.strip() == "" or ten_khach == "Khách hàng":
+        customer_info = f"👤 <b>Khách hàng:</b> <code>{sdt}</code>"
+    else:
+        customer_info = f"👤 <b>Khách hàng:</b> {ten_khach} (<code>{sdt}</code>)"
+
+    msg = f"""{title}
 🔖 <b>Mã đơn:</b> <code>{order_id}</code>
 
-👤 <b>Khách hàng:</b> {ten_khach}
-📞 <b>SĐT:</b> <code>{sdt}</code>
+{customer_info}
 📍 <b>Địa chỉ:</b> {dia_chi}
 📦 <b>Số lượng:</b> {so_luong} món
 📋 <b>Chi tiết món:</b>
@@ -123,7 +138,7 @@ async def send_new_order_notification(order: Dict[str, Any]) -> bool:
 💰 <b>Tổng tiền:</b> <b>{formatted_tien}đ</b>{freeship_text}
 ⏰ <b>Thời gian:</b> {created_at}
 
-<i>Chatbot đã ghi nhận đơn #{order_num} trong ngày và lưu hệ thống!</i> 💪"""
+{footer}"""
 
     return await send_telegram_message(msg)
 
@@ -157,7 +172,10 @@ async def send_daily_revenue_report(target_date: Optional[str] = None) -> bool:
         khach = html.escape(str(o.get('ten_khach_hang', 'Khách hàng')))
         sdt = html.escape(str(o.get('so_dien_thoai', '')))
         sl = o.get('so_luong', 0)
-        orders_detail.append(f"{idx}. <b>Đơn #{idx}</b> ({khach} - {sdt}): {sl} món - <b>{t_tien}đ</b>")
+        if not khach or khach.strip() == "" or khach == "Khách hàng":
+            orders_detail.append(f"{idx}. <b>Đơn #{idx}</b> (<code>{sdt}</code>): {sl} món - <b>{t_tien}đ</b>")
+        else:
+            orders_detail.append(f"{idx}. <b>Đơn #{idx}</b> ({khach} - <code>{sdt}</code>): {sl} món - <b>{t_tien}đ</b>")
 
     detail_str = "\n".join(orders_detail)
 
@@ -241,7 +259,10 @@ def format_period_report(summary: dict) -> str:
                 sdt = html.escape(str(o.get("so_dien_thoai", "")))
                 sl = o.get("so_luong", 0)
                 tien = f"{o.get('tong_tien', 0):,}".replace(",", ".")
-                body += f"{idx}. <b>Đơn #{idx}</b> ({khach} - {sdt}): {sl} món - <b>{tien}đ</b>\n"
+                if not khach or khach.strip() == "" or khach == "Khách hàng":
+                    body += f"{idx}. <b>Đơn #{idx}</b> (<code>{sdt}</code>): {sl} món - <b>{tien}đ</b>\n"
+                else:
+                    body += f"{idx}. <b>Đơn #{idx}</b> ({khach} - <code>{sdt}</code>): {sl} món - <b>{tien}đ</b>\n"
         else:
             body += "\n<i>Hôm nay chưa có đơn hàng nào phát sinh. Chúc shop bội thu! 🔥</i>"
 
@@ -293,15 +314,60 @@ async def send_period_report(chat_id: Optional[str] = None, period_type: str = "
 async def send_telegram_menu(chat_id: Optional[str] = None) -> bool:
     """Gửi tin nhắn chào mừng kèm bàn phím Reply Keyboard thường trực."""
     target_chat_id = str(chat_id or settings.TELEGRAM_CHAT_ID)
-    welcome_msg = """👋 <b>BẢNG ĐIỀU KHIỂN DOANH THU FITMAN</b> 🏋️‍♂️
+    welcome_msg = """👋 <b>BẢNG ĐIỀU KHIỂN FITMAN CHATBOT</b> 🏋️‍♂️
 
 Bạn có thể bấm các nút menu bên dưới màn hình hoặc gõ lệnh trực tiếp:
 • <b>📊 Doanh thu Hôm nay</b> (hoặc gõ <code>hôm nay</code>, <code>/today</code>)
 • <b>📅 Doanh thu 7 Ngày</b> (hoặc gõ <code>1 tuần</code>, <code>/week</code>)
 • <b>🗓️ Doanh thu Tháng này</b> (hoặc gõ <code>tháng này</code>, <code>/month</code>)
+• <b>👕 Quản lý Mẫu mới</b> (hoặc gõ <code>mẫu mới</code>, <code>/newmodel</code>)
 
-<i>Bấm nút bên dưới để xem số liệu ngay nhé!</i> 💪"""
+📸 <b>Thêm mẫu mới 2026:</b>
+Chỉ cần gửi ảnh sản phẩm trực tiếp vào chat này (kèm caption nếu muốn)! Bot sẽ tự lưu và cập nhật tối đa 6 mẫu mới nhất để gửi cho khách.
+
+<i>Bấm nút bên dưới để sử dụng ngay!</i> 💪"""
     return await send_telegram_message(welcome_msg, reply_markup=REPLY_KEYBOARD, chat_id=target_chat_id)
+
+
+async def send_model_management_info(chat_id: Optional[str] = None) -> bool:
+    """Gửi danh sách mẫu mới đang hiển thị và hướng dẫn quản lý."""
+    target_chat_id = str(chat_id or settings.TELEGRAM_CHAT_ID)
+    from app.services.new_models_service import list_all_models
+    info = list_all_models()
+    new_m = info.get("new", [])
+    old_m = info.get("old", [])
+    total = info.get("total", 0)
+
+    lines = [
+        "👕 <b>DANH SÁCH MẪU MỚI (SLIDING WINDOW)</b>\n",
+        f"📊 Tổng số mẫu trong hệ thống: <b>{total}</b>",
+        f"🔥 Đang hiển thị khi khách hỏi 'mẫu mới': <b>{len(new_m)}/6 mẫu</b>\n"
+    ]
+
+    if new_m:
+        lines.append("<b>Mẫu mới đang hiển thị (tối đa 6):</b>")
+        for i, m in enumerate(new_m, 1):
+            desc = f" ({html.escape(m['description'])})" if m.get("description") else ""
+            lines.append(f"{i}. Mã: <code>{m['id']}</code>{desc}")
+            lines.append(f"   🖼️ {m['image_url']}")
+    else:
+        lines.append("<i>Chưa có mẫu mới nào được thêm. Khi khách hỏi mẫu mới, bot sẽ gửi tất cả mẫu hiện có.</i>")
+
+    if old_m:
+        lines.append(f"\n📦 <b>Mẫu cũ (đã trượt khỏi cửa sổ 6 mẫu mới nhất):</b>")
+        for m in old_m:
+            lines.append(f"• Mã: <code>{m['id']}</code> ({m['image_url']})")
+
+    lines.append("\n" + "—" * 20)
+    lines.append("📸 <b>Cách thêm mẫu mới:</b>")
+    lines.append("Gửi ảnh vào chat này kèm <b>mã mẫu bạn muốn đặt</b> vào ghi chú (caption).")
+    lines.append("• <i>Chỉ đặt mã:</i> <code>48</code> hoặc <code>W8</code>, <code>Q8</code>")
+    lines.append("• <i>Kèm mô tả:</i> <code>48 Áo CBUM 2026</code> hoặc <code>W8 Áo Wolves punk</code>")
+    lines.append("\n❌ <b>Cách xóa mẫu:</b>")
+    lines.append("Gửi lệnh: <code>/xoa_mau [mã]</code> (ví dụ: <code>/xoa_mau 48</code>).")
+
+    text = "\n".join(lines)
+    return await send_telegram_message(text, reply_markup=REPLY_KEYBOARD, chat_id=target_chat_id)
 
 
 async def handle_telegram_update(update: dict) -> bool:
@@ -341,6 +407,55 @@ async def handle_telegram_update(update: dict) -> bool:
             logger.warning(f"Unauthorized Telegram message from chat_id={user_chat_id}")
             return False
 
+        # 1. Xử lý khi admin gửi ẢNH để thêm mẫu mới
+        if "photo" in msg:
+            photos = msg.get("photo", [])
+            if photos:
+                best_photo = photos[-1]
+                file_id = best_photo.get("file_id")
+                caption = str(msg.get("caption", "")).strip()
+
+                from app.services.new_models_service import parse_model_caption, download_telegram_photo, add_new_model, list_all_models
+
+                model_id, description = parse_model_caption(caption)
+                if not model_id:
+                    # Chủ shop chưa nhập mã mẫu
+                    guide_text = (
+                        "⚠️ <b>THIẾU MÃ MẪU!</b>\n\n"
+                        "Vui lòng gửi lại ảnh và nhập <b>mã mẫu bạn muốn đặt</b> vào phần ghi chú (caption) của ảnh nha anh.\n\n"
+                        "💡 <i>Ví dụ:</i>\n"
+                        "• <code>48</code> (chỉ cần nhập số mã)\n"
+                        "• <code>48 Áo CBUM 2026</code> (mã + mô tả)\n"
+                        "• <code>W8 Áo Wolves punk</code>\n"
+                        "• <code>Q8 Quần đùi CBUM đen</code>"
+                    )
+                    return await send_telegram_message(guide_text, chat_id=user_chat_id)
+
+                saved_url = await download_telegram_photo(file_id, model_id=model_id)
+                if saved_url:
+                    new_item = add_new_model(saved_url, model_id=model_id, description=description)
+                    all_info = list_all_models()
+                    new_count = len(all_info.get("new", []))
+                    old_count = len(all_info.get("old", []))
+
+                    push_msg = ""
+                    if old_count > 0:
+                        pushed = all_info["old"][-1]
+                        push_msg = f"\nℹ️ <i>Mẫu cũ <code>{pushed['id']}</code> đã được chuyển vào danh mục mẫu cũ.</i>"
+
+                    success_text = (
+                        f"✅ <b>ĐÃ LƯU MẪU {new_item['id']} THÀNH CÔNG!</b>\n\n"
+                        f"🆔 Mã mẫu: <b>{new_item['id']}</b>\n"
+                        f"📝 Mô tả: {html.escape(new_item.get('description', ''))}\n"
+                        f"🖼️ Đường dẫn: <code>{new_item['image_url']}</code>\n"
+                        f"🔥 Đang hiển thị: <b>{new_count}/6 mẫu mới nhất</b>"
+                        f"{push_msg}\n\n"
+                        f"💡 Khi khách hỏi 'mẫu mới' hoặc mã '{new_item['id']}', bot sẽ tự động gửi mẫu này!"
+                    )
+                    return await send_telegram_message(success_text, chat_id=user_chat_id)
+                else:
+                    return await send_telegram_message("❌ Tải ảnh từ Telegram thất bại. Vui lòng thử lại!", chat_id=user_chat_id)
+
         text_lower = text.lower()
 
         # Nhận diện lệnh xem Hôm nay
@@ -354,6 +469,29 @@ async def handle_telegram_update(update: dict) -> bool:
         # Nhận diện lệnh xem Tháng này / 1 tháng
         elif any(k in text_lower for k in ["tháng", "thang", "1 tháng", "1 thang", "tháng này", "thang nay", "month", "/month"]):
             return await send_period_report(user_chat_id, "month")
+
+        # Nhận diện lệnh Quản lý mẫu mới
+        elif any(k in text_lower for k in ["mẫu mới", "mau moi", "quản lý mẫu", "quan ly mau", "/newmodel", "/mau_moi"]):
+            return await send_model_management_info(user_chat_id)
+
+        # Nhận diện lệnh xóa mẫu: /xoa_mau [mã] hoặc xóa mẫu [mã]
+        elif text_lower.startswith("/xoa_mau") or text_lower.startswith("/deletemodel") or "xóa mẫu" in text_lower or "xoa mau" in text_lower:
+            parts = text.split()
+            target_id = ""
+            for p in parts:
+                p_clean = p.strip(".,:;").upper()
+                if p_clean not in ["/XOA_MAU", "/DELETEMODEL", "XÓA", "XOA", "MẪU", "MAU"]:
+                    target_id = p_clean
+                    break
+            if target_id:
+                from app.services.new_models_service import remove_model
+                success = remove_model(target_id)
+                if success:
+                    return await send_telegram_message(f"✅ Đã xóa mẫu <code>{target_id}</code> thành công!", chat_id=user_chat_id)
+                else:
+                    return await send_telegram_message(f"❌ Không tìm thấy mẫu <code>{target_id}</code> trong danh sách!", chat_id=user_chat_id)
+            else:
+                return await send_telegram_message("⚠️ Vui lòng ghi rõ mã mẫu cần xóa. Ví dụ: <code>/xoa_mau 48</code>", chat_id=user_chat_id)
 
         # Các trường hợp khác: hiển thị menu chính kèm bàn phím
         else:
