@@ -107,9 +107,11 @@ def test_tim_anh_san_pham_custom_codes():
     res_48 = tim_anh_san_pham("48")
     assert res_48["image_urls"] == ["/static/products/new_models/model_48.jpg"]
 
-    # Tra cứu trong câu chat "cho xem áo 48"
-    res_chat = tim_anh_san_pham("cho xem áo 48")
-    assert res_chat["image_urls"] == ["/static/products/new_models/model_48.jpg"]
+    # Tra cứu trong câu chat "cho xem áo 48", "cho xem mẫu 48", "mẫu mới 48", "cho xem ảnh mẫu 48"
+    assert tim_anh_san_pham("cho xem áo 48")["image_urls"] == ["/static/products/new_models/model_48.jpg"]
+    assert tim_anh_san_pham("cho xem mẫu 48")["image_urls"] == ["/static/products/new_models/model_48.jpg"]
+    assert tim_anh_san_pham("mẫu mới 48")["image_urls"] == ["/static/products/new_models/model_48.jpg"]
+    assert tim_anh_san_pham("cho xem ảnh mẫu 48")["image_urls"] == ["/static/products/new_models/model_48.jpg"]
 
     # Tra cứu mã "W8"
     res_w8 = tim_anh_san_pham("W8")

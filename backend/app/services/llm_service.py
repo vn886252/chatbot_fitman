@@ -268,8 +268,12 @@ async def generate_response(
     if not is_ordering_with_codes:
         # Nếu hỏi xem mẫu mới (tối đa 6 mẫu mới nhất)
         is_new_query = (
-            any(k in lower_user for k in ["mẫu mới", "mau moi", "2026", "hàng mới", "hang moi", "mới về", "moi ve", "mới nhất", "moi nhat"])
-            or (bool(re.search(r'\bnew\b', lower_user)) and not bool(re.search(r'\bnew_\d+\b', lower_user)))
+            any(k in lower_user for k in [
+                "mẫu mới", "mau moi", "mẫu áo mới", "mau ao moi", "mẫu quần mới", "mau quan moi",
+                "áo mới", "ao moi", "quần mới", "quan moi", "hàng mới", "hang moi",
+                "mới về", "moi ve", "mới nhất", "moi nhat", "2026", "bộ sưu tập mới"
+            ])
+            or (bool(re.search(r'\b(mới|moi|new)\b', lower_user)) and not bool(re.search(r'\bnew_\d+\b', lower_user)))
         )
         if is_new_query:
             try:

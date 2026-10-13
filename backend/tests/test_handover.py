@@ -131,3 +131,102 @@ async def test_send_handover_alert_telegram():
         assert success2 is True
         msg_text2 = mock_send.call_args[0][0]
         assert "NHÂN VIÊN ĐANG CHAT VỚI KHÁCH" in msg_text2
+
+
+def test_global_pause_and_resume():
+    from app.services.handover_service import pause_global, unpause_global, unpause_all, is_bot_paused, get_handover_status
+    # Tạm dừng toàn bộ bot
+    timeout_h = pause_global("test")
+    assert timeout_h == 2.0
+    status = get_handover_status()
+    assert status["global_paused"] is True
+    assert status["global_remaining"] > 7100
+
+    # Mọi khách hàng đều bị pause khi global_paused = True
+    paused, rem = is_bot_paused("random_customer_1")
+    assert paused is True
+    assert rem > 7100
+
+    paused2, rem2 = is_bot_paused("random_customer_2")
+    assert paused2 is True
+
+    # Bật lại toàn bộ
+    unpause_all()
+    assert is_bot_paused("random_customer_1")[0] is False
+    assert get_handover_status()["global_paused"] is False
+
+
+def test_handover_persistence_file(tmp_path, monkeypatch):
+    import app.services.handover_service as hs
+    temp_file = tmp_path / "handover.json"
+    monkeypatch.setattr(hs, "_get_data_path", lambda: str(temp_file))
+
+    # Tạm dừng khách hàng
+    hs.pause_bot("customer_persistent_01", reason="test")
+    assert temp_file.exists()
+
+    # Xóa RAM
+    hs._handover_state.clear()
+    assert "customer_persistent_01" not in hs._handover_state
+
+    # Tải lại từ file
+    hs._load_state()
+    assert "customer_persistent_01" in hs._handover_state
+    paused, _ = hs.is_bot_paused("customer_persistent_01")
+    assert paused is True
+
+
+@pytest.mark.asyncio
+async def test_telegram_pause_resume_commands():
+    from app.services.telegram_service import handle_telegram_update
+    from app.services.handover_service import is_bot_paused, unpause_all
+    from app.config import settings
+
+    chat_id = settings.TELEGRAM_CHAT_ID
+
+    # 1. Bấm nút Tạm dừng Bot (Toàn bộ)
+    with patch("app.services.telegram_service.send_telegram_message", new_callable=AsyncMock) as mock_send:
+        mock_send.return_value = True
+        update = {
+            "message": {
+                "chat": {"id": chat_id},
+                "text": "⏸️ Tạm dừng Bot"
+            }
+        }
+        res = await handle_telegram_update(update)
+        assert res is True
+        mock_send.assert_called_once()
+        assert "ĐÃ TẠM DỪNG TOÀN BỘ BOT" in mock_send.call_args[0][0]
+        assert is_bot_paused("any_user")[0] is True
+
+    # 2. Bấm nút Bật lại Bot
+    with patch("app.services.telegram_service.send_telegram_message", new_callable=AsyncMock) as mock_send:
+        mock_send.return_value = True
+        update_resume = {
+            "message": {
+                "chat": {"id": chat_id},
+                "text": "▶️ Bật lại Bot"
+            }
+        }
+        res = await handle_telegram_update(update_resume)
+        assert res is True
+        mock_send.assert_called_once()
+        assert "ĐÃ BẬT LẠI BOT" in mock_send.call_args[0][0]
+        assert is_bot_paused("any_user")[0] is False
+
+    # 3. Click nút inline "pause_user_cust123"
+    with patch("app.services.telegram_service.send_telegram_message", new_callable=AsyncMock) as mock_send:
+        mock_send.return_value = True
+        cb_update = {
+            "callback_query": {
+                "id": "cb_001",
+                "from": {"id": chat_id},
+                "data": "pause_user_cust123"
+            }
+        }
+        res = await handle_telegram_update(cb_update)
+        assert res is True
+        mock_send.assert_called_once()
+        assert "cust123" in mock_send.call_args[0][0]
+        assert is_bot_paused("cust123")[0] is True
+

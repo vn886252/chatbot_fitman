@@ -226,6 +226,26 @@ VÀ (4) ĐỊA CHỈ GIAO HÀNG THẬT CỤ THỂ (số nhà, tên đường, ph
 """
 
 def get_system_prompt() -> str:
-    return FITMAN_SYSTEM_PROMPT
+    prompt = FITMAN_SYSTEM_PROMPT
+    try:
+        from app.services.new_models_service import get_new_models
+        new_models = get_new_models()
+        if new_models:
+            models_lines = [
+                f"  • Mẫu {m['id']}: {m.get('description', '')}"
+                for m in new_models
+            ]
+            models_str = "\n".join(models_lines)
+            last_id = new_models[-1]['id']
+            prompt += (
+                f"\n\n---\n**DANH SÁCH MẪU MỚI (CẬP NHẬT TỰ ĐỘNG - ƯU TIÊN TƯ VẤN):**\n"
+                f"{models_str}\n"
+                f"(LƯU Ý: Các mã trên là các MẪU MỚI của shop, áp dụng chính sách giá đồng giá thông thường. "
+                f"Khi khách hỏi 'mẫu mới', 'áo mới', hoặc hỏi theo mã như '{last_id}', "
+                f"hãy gọi tool tim_anh_san_pham('mẫu mới') hoặc tim_anh_san_pham('{last_id}') để gửi ảnh cho khách xem!)."
+            )
+    except Exception:
+        pass
+    return prompt
 
 

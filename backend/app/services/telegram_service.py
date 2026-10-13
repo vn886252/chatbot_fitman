@@ -1,3 +1,4 @@
+import re
 import html
 import logging
 from typing import Optional, Dict, Any, List
@@ -12,6 +13,7 @@ REPLY_KEYBOARD = {
     "keyboard": [
         [{"text": "📊 Doanh thu Hôm nay"}, {"text": "📅 Doanh thu 7 Ngày"}],
         [{"text": "🗓️ Doanh thu Tháng này"}, {"text": "👕 Quản lý Mẫu mới"}],
+        [{"text": "⏸️ Tạm dừng Bot"}, {"text": "▶️ Bật lại Bot"}],
         [{"text": "❓ Hướng dẫn"}]
     ],
     "resize_keyboard": True,
@@ -193,9 +195,53 @@ async def send_daily_revenue_report(target_date: Optional[str] = None) -> bool:
     return await send_telegram_message(msg)
 
 
-async def send_handover_alert(customer_id: str, customer_name: str, event_type: str, user_text: str = "") -> bool:
+async def send_telegram_photo(
+    photo_url: str,
+    caption: str = "",
+    parse_mode: str = "HTML",
+    reply_markup: Optional[dict] = None,
+    chat_id: Optional[str] = None
+) -> bool:
+    """Gửi ảnh qua Telegram Bot API (hỗ trợ URL ảnh đính kèm)."""
+    target_chat_id = str(chat_id or settings.TELEGRAM_CHAT_ID)
+    if not settings.TELEGRAM_BOT_TOKEN or not target_chat_id:
+        logger.warning("Telegram Bot Token or Chat ID not configured. Skipping photo.")
+        return False
+
+    url = f"https://api.telegram.org/bot{settings.TELEGRAM_BOT_TOKEN}/sendPhoto"
+    payload: Dict[str, Any] = {
+        "chat_id": target_chat_id,
+        "photo": photo_url,
+    }
+    if caption:
+        payload["caption"] = caption[:1024]
+        payload["parse_mode"] = parse_mode
+    if reply_markup:
+        payload["reply_markup"] = reply_markup
+
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            res = await client.post(url, json=payload)
+            if res.status_code == 200:
+                logger.info("Telegram photo sent successfully.")
+                return True
+            else:
+                logger.warning(f"Telegram sendPhoto failed ({res.status_code}): {res.text}")
+                return False
+    except Exception as e:
+        logger.warning(f"Exception sending Telegram photo: {e}")
+        return False
+
+
+async def send_handover_alert(
+    customer_id: str,
+    customer_name: str,
+    event_type: str,
+    user_text: str = "",
+    image_url: Optional[str] = None
+) -> bool:
     """
-    Gửi thông báo Telegram khi có sự kiện chuyển giao hoặc người thật can thiệp chat.
+    Gửi thông báo Telegram khi có sự kiện chuyển giao hoặc người thật can thiệp chat / khách gửi ảnh.
     """
     c_name = html.escape(str(customer_name or "Khách hàng"))
     c_id = html.escape(str(customer_id or ""))
@@ -226,12 +272,33 @@ async def send_handover_alert(customer_id: str, customer_name: str, event_type: 
 
 ℹ️ <i>Đã quá {timeout_h} giờ không có người thật chat. Bot đã tự động hoạt động trở lại!</i>"""
 
-    else:
-        msg = f"""ℹ️ <b>THÔNG BÁO HANDOVER</b>
-👤 <b>Khách hàng:</b> {c_name} (<code>{c_id}</code>)
-💬 <i>{u_text}</i>"""
+    elif event_type == "customer_sent_image":
+        u_info = f'\n💬 <b>Lời nhắn của khách:</b> <i>"{u_text}"</i>' if u_text and u_text not in ["[Đã gửi ảnh]", "[Đã gửi ảnh mẫu]"] else ""
+        msg = f"""📸 <b>KHÁCH HÀNG VỪA GỬI ẢNH MẪU!</b>
+👤 <b>Khách hàng:</b> {c_name}
+🆔 <b>ID:</b> <code>{c_id}</code>{u_info}
 
-    return await send_telegram_message(msg)
+💡 <i>Khách vừa gửi ảnh mẫu qua Messenger. Bạn vào kiểm tra ảnh để tư vấn hoặc chốt mẫu cho khách nhé!</i>"""
+
+    else:
+        msg = f"🔔 <b>THÔNG BÁO TỪ KHÁCH HÀNG</b>\n👤 <b>{c_name}</b> (<code>{c_id}</code>): {u_text}"
+
+    handover_keyboard = {
+        "inline_keyboard": [
+            [
+                {"text": "⏸️ Tắt bot khách này", "callback_data": f"pause_user_{customer_id}"},
+                {"text": "▶️ Bật lại bot", "callback_data": f"resume_user_{customer_id}"}
+            ]
+        ]
+    } if customer_id else None
+
+    # Nếu có ảnh đính kèm, thử gửi ảnh trực tiếp vào Telegram trước
+    if image_url and event_type == "customer_sent_image":
+        photo_sent = await send_telegram_photo(image_url, caption=msg, reply_markup=handover_keyboard)
+        if photo_sent:
+            return True
+
+    return await send_telegram_message(msg, reply_markup=handover_keyboard)
 
 
 def format_period_report(summary: dict) -> str:
@@ -321,9 +388,11 @@ Bạn có thể bấm các nút menu bên dưới màn hình hoặc gõ lệnh t
 • <b>📅 Doanh thu 7 Ngày</b> (hoặc gõ <code>1 tuần</code>, <code>/week</code>)
 • <b>🗓️ Doanh thu Tháng này</b> (hoặc gõ <code>tháng này</code>, <code>/month</code>)
 • <b>👕 Quản lý Mẫu mới</b> (hoặc gõ <code>mẫu mới</code>, <code>/newmodel</code>)
+• <b>⏸️ Tạm dừng Bot</b> (hoặc gõ <code>/pause</code>): Tắt bot trong 2h để bạn trực tiếp vào chat với khách
+• <b>▶️ Bật lại Bot</b> (hoặc gõ <code>/resume</code>): Bật lại bot tự động tư vấn
 
 📸 <b>Thêm mẫu mới 2026:</b>
-Chỉ cần gửi ảnh sản phẩm trực tiếp vào chat này (kèm caption nếu muốn)! Bot sẽ tự lưu và cập nhật tối đa 6 mẫu mới nhất để gửi cho khách.
+Gửi ảnh sản phẩm trực tiếp vào chat này kèm mã mẫu (ví dụ: <code>48</code> hoặc <code>48 Áo CBUM đen</code>)!
 
 <i>Bấm nút bên dưới để sử dụng ngay!</i> 💪"""
     return await send_telegram_message(welcome_msg, reply_markup=REPLY_KEYBOARD, chat_id=target_chat_id)
@@ -396,6 +465,25 @@ async def handle_telegram_update(update: dict) -> bool:
             return await send_period_report(user_chat_id, "month")
         elif data == "report_refresh":
             return await send_period_report(user_chat_id, "today")
+        elif data.startswith("pause_user_"):
+            target_id = data.replace("pause_user_", "")
+            from app.services.handover_service import pause_bot
+            pause_bot(target_id, reason="telegram_inline_button")
+            return await send_telegram_message(
+                f"⏸️ <b>ĐÃ TẠM DỪNG BOT VỚI KHÁCH {target_id}!</b>\n\n"
+                f"Bot sẽ im lặng trong 2 giờ để bạn vào Page Inbox tư vấn cho khách nhé! 💪\n"
+                f"Bấm <b>▶️ Bật lại Bot</b> nếu bạn muốn bật lại sớm hơn.",
+                chat_id=user_chat_id
+            )
+        elif data.startswith("resume_user_"):
+            target_id = data.replace("resume_user_", "")
+            from app.services.handover_service import unpause_bot
+            unpause_bot(target_id)
+            return await send_telegram_message(
+                f"▶️ <b>ĐÃ BẬT LẠI BOT VỚI KHÁCH {target_id}!</b>\n\n"
+                f"Bot đã sẵn sàng tự động trả lời cho khách này. 💪",
+                chat_id=user_chat_id
+            )
 
     elif "message" in update:
         msg = update["message"]
@@ -473,6 +561,67 @@ async def handle_telegram_update(update: dict) -> bool:
         # Nhận diện lệnh Quản lý mẫu mới
         elif any(k in text_lower for k in ["mẫu mới", "mau moi", "quản lý mẫu", "quan ly mau", "/newmodel", "/mau_moi"]):
             return await send_model_management_info(user_chat_id)
+
+        # Nhận diện lệnh Tạm dừng Bot
+        elif any(k in text_lower for k in ["tạm dừng bot", "tam dung bot", "dừng bot", "dung bot", "tắt bot", "tat bot", "/pause"]):
+            clean_cmd = re.sub(r'^[^\w/]+', '', text.strip())
+            parts = clean_cmd.split()
+            target_id = ""
+            if len(parts) > 1 and parts[0].lower() in ["/pause", "pause", "tắt", "tat", "dừng", "dung"]:
+                candidate = parts[1].strip(".,:;")
+                if re.match(r'^[a-zA-Z0-9_-]+$', candidate) and candidate.lower() not in ["bot", "khách", "khach", "all"]:
+                    target_id = candidate
+
+            from app.services.handover_service import pause_bot, pause_global
+            if target_id:
+                pause_bot(target_id, reason="admin_telegram_command")
+                return await send_telegram_message(
+                    f"⏸️ <b>ĐÃ TẠM DỪNG BOT VỚI KHÁCH {target_id}!</b>\n\n"
+                    f"Bot sẽ im lặng với khách này trong 2 giờ để bạn vào chat tư vấn.\n"
+                    f"Bấm <b>▶️ Bật lại Bot</b> nếu bạn muốn bật lại sớm hơn nha! 💪",
+                    chat_id=user_chat_id
+                )
+            else:
+                pause_global(reason="admin_telegram_command")
+                return await send_telegram_message(
+                    "⏸️ <b>ĐÃ TẠM DỪNG TOÀN BỘ BOT!</b>\n\n"
+                    "Bot sẽ <b>KHÔNG tự động trả lời bất kỳ khách hàng nào</b> trong 2 giờ tới để bạn thoải mái trực tiếp chat.\n"
+                    "Khi tư vấn xong, bạn chỉ cần bấm nút <b>▶️ Bật lại Bot</b> (hoặc gõ <code>/resume</code>) để bot tự động trực tiếp khách nhé! 💪",
+                    chat_id=user_chat_id
+                )
+
+        # Nhận diện lệnh Bật lại Bot
+        elif any(k in text_lower for k in ["bật lại bot", "bat lai bot", "bật bot", "bat bot", "/resume", "/unpause"]):
+            from app.services.handover_service import unpause_all
+            unpause_all()
+            return await send_telegram_message(
+                "▶️ <b>ĐÃ BẬT LẠI BOT HOẠT ĐỘNG BÌNH THƯỜNG!</b>\n\n"
+                "Bot đã sẵn sàng tự động tư vấn size, báo giá và chốt đơn cho khách hàng. 💪",
+                chat_id=user_chat_id
+            )
+
+        # Nhận diện lệnh xem trạng thái handover
+        elif any(k in text_lower for k in ["trạng thái bot", "trang thai bot", "/handover", "/status"]):
+            from app.services.handover_service import get_handover_status
+            status = get_handover_status()
+            lines = ["🤖 <b>TRẠNG THÁI HOẠT ĐỘNG CỦA BOT</b>\n"]
+            if status.get("global_paused"):
+                rem_min = int(status["global_remaining"] // 60)
+                lines.append(f"⏸️ <b>Đang tạm dừng TOÀN BỘ bot</b> (còn {rem_min} phút)")
+            else:
+                lines.append("▶️ <b>Trạng thái chung:</b> Đang bật (Online)")
+
+            paused_c = status.get("paused_customers", [])
+            if paused_c:
+                lines.append(f"\n👤 <b>Khách đang bị tạm dừng ({len(paused_c)} khách):</b>")
+                for c in paused_c:
+                    c_rem = int(c["remaining_seconds"] // 60)
+                    lines.append(f"• ID: <code>{c['customer_id']}</code> (còn {c_rem} phút)")
+            else:
+                lines.append("<i>Không có khách hàng nào đang bị tạm dừng riêng lẻ.</i>")
+
+            lines.append("\n💡 <i>Bạn có thể bấm '⏸️ Tạm dừng Bot' hoặc '▶️ Bật lại Bot' bất kỳ lúc nào!</i>")
+            return await send_telegram_message("\n".join(lines), chat_id=user_chat_id)
 
         # Nhận diện lệnh xóa mẫu: /xoa_mau [mã] hoặc xóa mẫu [mã]
         elif text_lower.startswith("/xoa_mau") or text_lower.startswith("/deletemodel") or "xóa mẫu" in text_lower or "xoa mau" in text_lower:

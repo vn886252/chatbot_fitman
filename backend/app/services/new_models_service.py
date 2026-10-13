@@ -154,7 +154,10 @@ def list_all_models() -> Dict[str, Any]:
     }
 
 async def download_telegram_photo(file_id: str, model_id: Optional[str] = None) -> Optional[str]:
-    """Download ảnh từ Telegram API, lưu vào static/products/new_models/ với tên theo mã mẫu."""
+    """
+    Download ảnh từ Telegram API và lưu vào static/products/new_models/.
+    Trả về đường dẫn /static/products/new_models/model_{id}.jpg để bot upload trực tiếp qua Facebook Send API.
+    """
     token = settings.TELEGRAM_BOT_TOKEN
     async with httpx.AsyncClient() as client:
         # Lấy file_path từ Telegram
@@ -165,20 +168,24 @@ async def download_telegram_photo(file_id: str, model_id: Optional[str] = None) 
             return None
         tg_file_path = result["result"]["file_path"]
 
-        # Download file content
-        content_resp = await client.get(f"https://api.telegram.org/file/bot{token}/{tg_file_path}")
-        if content_resp.status_code != 200:
-            logger.error(f"Telegram download failed: status={content_resp.status_code}")
-            return None
+        # URL download từ Telegram
+        telegram_url = f"https://api.telegram.org/file/bot{token}/{tg_file_path}"
 
-        # Đặt tên file theo mã mẫu (loại bỏ ký tự nguy hiểm cho file)
-        safe_id = re.sub(r'[^a-zA-Z0-9_-]', '_', str(model_id or "model"))
-        file_name = f"model_{safe_id}.jpg"
+        # Download và lưu cục bộ vào static/products/new_models/
+        try:
+            content_resp = await client.get(telegram_url)
+            if content_resp.status_code == 200:
+                safe_id = re.sub(r'[^a-zA-Z0-9_-]', '_', str(model_id or "model"))
+                file_name = f"model_{safe_id}.jpg"
+                file_path_abs = os.path.join(ROOT_DIR, "static", "products", "new_models", file_name)
+                os.makedirs(os.path.dirname(file_path_abs), exist_ok=True)
+                with open(file_path_abs, "wb") as f:
+                    f.write(content_resp.content)
+                logger.info(f"Downloaded Telegram photo to {file_path_abs}")
+                return f"/static/products/new_models/{file_name}"
+        except Exception as e:
+            logger.warning(f"Could not save local copy of Telegram photo: {e}")
 
-        file_path_abs = os.path.join(ROOT_DIR, "static", "products", "new_models", file_name)
-        os.makedirs(os.path.dirname(file_path_abs), exist_ok=True)
-        with open(file_path_abs, "wb") as f:
-            f.write(content_resp.content)
+        # Fallback nếu không ghi được ổ đĩa: dùng trực tiếp Telegram URL
+        return telegram_url
 
-        logger.info(f"Downloaded Telegram photo to {file_path_abs}")
-        return f"/static/products/new_models/{file_name}"

@@ -1,7 +1,9 @@
-import httpx
-from app.config import settings
-from app.services.handover_service import record_bot_sent
+import os
+import json
 import logging
+import httpx
+from app.config import settings, ROOT_DIR
+from app.services.handover_service import record_bot_sent
 
 logger = logging.getLogger(__name__)
 
@@ -65,10 +67,73 @@ async def send_text_message(recipient_id: str, text: str) -> bool:
 
 
 async def send_image_message(recipient_id: str, image_url: str) -> bool:
-    full_url = _resolve_image_url(image_url)
-    logger.info(f"Sending image: {full_url}")
-
+    """
+    Gửi ảnh cho khách qua Facebook Messenger Send API.
+    1. Ưu tiên: Nếu ảnh có file cục bộ trên máy chủ (ví dụ /static/products/...),
+       upload trực tiếp bằng multipart/form-data (filedata).
+       -> Hoạt động 100% tin cậy trên cả Localhost, Render, Ngrok mà không phụ thuộc vào domain ngoài!
+    2. Fallback: Nếu không tìm thấy file cục bộ hoặc là URL http/https, gửi qua URL payload.
+    """
     url = f"https://graph.facebook.com/v19.0/me/messages?access_token={settings.FB_PAGE_ACCESS_TOKEN}"
+
+    # 1. Xác định đường dẫn file cục bộ trên server
+    local_path = None
+    if image_url.startswith("/") or not (image_url.startswith("http://") or image_url.startswith("https://")):
+        clean_rel = image_url.lstrip("/")
+        candidate = os.path.join(ROOT_DIR, clean_rel)
+        if os.path.exists(candidate) and os.path.isfile(candidate):
+            local_path = candidate
+        else:
+            base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+            candidate2 = os.path.join(base_dir, clean_rel)
+            if os.path.exists(candidate2) and os.path.isfile(candidate2):
+                local_path = candidate2
+    elif os.path.isabs(image_url) and os.path.exists(image_url) and os.path.isfile(image_url):
+        local_path = image_url
+
+    # 2. Upload trực tiếp filedata nếu file tồn tại trên ổ đĩa
+    if local_path and os.path.exists(local_path) and os.path.isfile(local_path):
+        logger.info(f"Directly uploading local image to Facebook: {local_path}")
+        try:
+            filename = os.path.basename(local_path)
+            content_type = "image/png" if filename.lower().endswith(".png") else "image/jpeg"
+            with open(local_path, "rb") as f:
+                file_bytes = f.read()
+
+            data = {
+                "recipient": json.dumps({"id": recipient_id}),
+                "messaging_type": "RESPONSE",
+                "message": json.dumps({
+                    "attachment": {
+                        "type": "image",
+                        "payload": {"is_reusable": True}
+                    }
+                })
+            }
+            files = {
+                "filedata": (filename, file_bytes, content_type)
+            }
+            async with httpx.AsyncClient(timeout=45.0) as client:
+                response = await client.post(url, data=data, files=files)
+                if response.status_code == 200:
+                    try:
+                        res_json = response.json()
+                        mid = res_json.get("message_id")
+                        if mid:
+                            record_bot_sent(mid)
+                    except Exception:
+                        pass
+                    logger.info(f"Local image uploaded successfully to {recipient_id}.")
+                    return True
+                else:
+                    logger.warning(f"Direct file upload to Facebook returned {response.status_code}: {response.text}. Falling back to URL payload.")
+        except Exception as e:
+            logger.warning(f"Error during local file upload to Facebook: {e}. Falling back to URL payload.")
+
+    # 3. Fallback: Gửi qua URL payload
+    full_url = _resolve_image_url(image_url)
+    logger.info(f"Sending image via URL payload: {full_url}")
+
     payload = {
         "recipient": {"id": recipient_id},
         "messaging_type": "RESPONSE",

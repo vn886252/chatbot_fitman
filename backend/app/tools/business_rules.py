@@ -87,12 +87,48 @@ def tim_anh_san_pham(ma_san_pham_hoac_tu_khoa: str) -> Dict[str, Any]:
 
     image_urls: List[str] = []
 
-    # 0a. Khách hỏi xem MẪU MỚI ("mẫu mới", "mau moi", "2026", "hàng mới", "hang moi", "mới về", "moi ve", "mới nhất", "moi nhat", "new")
-    is_new_query = (
-        any(k in tu_khoa_lower for k in ["mẫu mới", "mau moi", "2026", "hàng mới", "hang moi", "mới về", "moi ve", "mới nhất", "moi nhat"])
-        or (bool(re.search(r'\bnew\b', tu_khoa_lower)) and not tu_khoa_lower.startswith("new_"))
-    )
-    if is_new_query:
+    # Ưu tiên kiểm tra: Nếu câu chat có chứa mã mẫu cụ thể (do shop tự đặt như B1, B2, 48, W8... hoặc mã chuẩn W1, Q1...)
+    # thì trả về đúng ảnh của mã đó, không rơi vào các danh mục chung chung!
+    found_specific_codes = []
+    try:
+        from app.services.new_models_service import find_model_by_id
+        m_direct = find_model_by_id(tu_khoa)
+        if m_direct and m_direct.get("image_url"):
+            found_specific_codes.append(m_direct["image_url"])
+    except Exception:
+        pass
+
+    if not found_specific_codes and tu_khoa_upper in ANH_THEO_MA:
+        found_specific_codes.append(ANH_THEO_MA[tu_khoa_upper])
+
+    if not found_specific_codes:
+        for word in tu_khoa.split():
+            w_clean = word.strip(".,;:?!-_/#").upper()
+            if not w_clean:
+                continue
+            try:
+                from app.services.new_models_service import find_model_by_id
+                m = find_model_by_id(w_clean)
+                if m and m.get("image_url") and m["image_url"] not in found_specific_codes:
+                    found_specific_codes.append(m["image_url"])
+            except Exception:
+                pass
+            if w_clean in ANH_THEO_MA and (len(w_clean) > 1 or any(k in tu_khoa_lower for k in [f"mẫu {w_clean.lower()}", f"mã {w_clean.lower()}", f"áo {w_clean.lower()}", f"quần {w_clean.lower()}"])):
+                if ANH_THEO_MA[w_clean] not in found_specific_codes:
+                    found_specific_codes.append(ANH_THEO_MA[w_clean])
+
+    if found_specific_codes:
+        image_urls = found_specific_codes
+
+    # 0a. Khách hỏi xem MẪU MỚI ("mẫu mới", "mẫu áo mới", "áo mới", "quần mới", "2026", "hàng mới", "mới về", "mới nhất", "new"...)
+    elif (
+        any(k in tu_khoa_lower for k in [
+            "mẫu mới", "mau moi", "mẫu áo mới", "mau ao moi", "mẫu quần mới", "mau quan moi",
+            "áo mới", "ao moi", "quần mới", "quan moi", "hàng mới", "hang moi",
+            "mới về", "moi ve", "mới nhất", "moi nhat", "2026", "bộ sưu tập mới"
+        ])
+        or (bool(re.search(r'\b(mới|moi|new)\b', tu_khoa_lower)) and not tu_khoa_lower.startswith("new_"))
+    ):
         try:
             from app.services.new_models_service import get_new_models
             new_models = get_new_models()

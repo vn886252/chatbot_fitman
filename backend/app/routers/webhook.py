@@ -9,7 +9,8 @@ from app.services.handover_service import (
     record_human_message,
     is_bot_paused,
     pause_bot,
-    check_human_request_intent
+    check_human_request_intent,
+    record_last_customer
 )
 from app.services.telegram_service import send_handover_alert
 
@@ -68,14 +69,18 @@ async def handle_webhook(request: Request):
                 # -------------------------------------------------------------
                 if message.get("is_echo"):
                     mid = message.get("mid")
+                    app_id = message.get("app_id")
+
                     # Nếu là tin nhắn do chính Bot gửi qua Graph API -> bỏ qua
-                    if is_bot_sent(mid):
+                    # (Facebook gửi kèm app_id nếu do Bot gửi, còn người thật gửi từ Inbox thì app_id là None/trống)
+                    if is_bot_sent(mid) or (app_id is not None and str(app_id) != ""):
                         continue
 
-                    # Nếu KHÔNG phải Bot gửi -> Đây là NGƯỜI THẬT (Admin/Nhân viên) nhắn qua Page Inbox!
+                    # Nếu KHÔNG phải Bot gửi -> Chắc chắn là NGƯỜI THẬT (Admin/Nhân viên) nhắn qua Page Inbox!
                     customer_id = event.get("recipient", {}).get("id")
-                    human_text = message.get("text", "")
+                    human_text = message.get("text") or "[Hình ảnh/Tệp đính kèm]"
                     if customer_id:
+                        record_last_customer(customer_id)
                         is_first = record_human_message(customer_id)
                         if is_first:
                             customer_name = await get_customer_name(customer_id)
@@ -88,15 +93,71 @@ async def handle_webhook(request: Request):
                     continue
 
                 # -------------------------------------------------------------
+                # 1b. Ghi nhận khi Admin đọc tin nhắn của khách
+                # -------------------------------------------------------------
+                if "read" in event:
+                    recipient_id = event.get("recipient", {}).get("id")
+                    if recipient_id:
+                        record_last_customer(recipient_id)
+
+                # -------------------------------------------------------------
                 # 2. Xử lý tin nhắn từ Khách hàng
                 # -------------------------------------------------------------
                 user_text = message.get("text")
-                if sender_id and user_text:
+                attachments = message.get("attachments") or []
+                is_sticker = bool(message.get("sticker_id"))
+
+                image_urls = []
+                if not is_sticker and attachments:
+                    for att in attachments:
+                        if att.get("type") == "image":
+                            p_url = att.get("payload", {}).get("url")
+                            if p_url:
+                                image_urls.append(p_url)
+
+                has_image = len(image_urls) > 0
+
+                if sender_id and (user_text or has_image):
+                    record_last_customer(sender_id)
                     try:
                         # Kiểm tra xem Bot có đang bị tạm dừng với khách này không (do người thật đang chat hoặc mới yêu cầu)
                         paused, remaining = is_bot_paused(sender_id)
                         if paused:
                             logger.info(f"[Handover] Bot is paused for customer {sender_id} ({remaining:.0f}s left). Skipping auto-reply.")
+                            continue
+
+                        # 2a. Nếu khách hàng gửi HÌNH ẢNH (mẫu áo/quần)
+                        if has_image:
+                            logger.info(f"[Image] Customer {sender_id} sent image(s): {len(image_urls)}")
+                            customer_name = await get_customer_name(sender_id)
+
+                            # Gửi cảnh báo ngay cho shop owner qua Telegram (kèm ảnh nếu có)
+                            await send_handover_alert(
+                                customer_id=sender_id,
+                                customer_name=customer_name,
+                                event_type="customer_sent_image",
+                                user_text=user_text or "[Đã gửi ảnh mẫu]",
+                                image_url=image_urls[0] if image_urls else None
+                            )
+
+                            # Phản hồi nhẹ nhàng giữ chân khách trên Facebook Messenger
+                            if user_text:
+                                image_reply = (
+                                    "Dạ shop đã nhận được ảnh mẫu của anh/chị rồi ạ! "
+                                    "Em đã báo nhân viên vào kiểm tra mẫu ngay cho mình trong ít phút nhé ạ! 💪\n\n"
+                                    "Anh/chị có thể nhắn thêm chiều cao + cân nặng để shop hỗ trợ tư vấn size luôn nha!"
+                                )
+                            else:
+                                image_reply = (
+                                    "Dạ shop đã nhận được ảnh mẫu của anh/chị rồi ạ! "
+                                    "Anh/chị đợi nhân viên shop kiểm tra kho và phản hồi lại ngay trong ít phút nhé ạ! 💪\n\n"
+                                    "(Hoặc anh/chị có thể nhắn trước chiều cao + cân nặng để shop chọn size luôn nha)"
+                                )
+
+                            await send_text_message(sender_id, image_reply)
+                            history_entry = f"[Khách gửi ảnh mẫu]{f': {user_text}' if user_text else ''}"
+                            _conversation_history[sender_id].append({"role": "user", "content": history_entry})
+                            _conversation_history[sender_id].append({"role": "assistant", "content": image_reply})
                             continue
 
                         # Kiểm tra nếu khách hàng yêu cầu gặp người thật / nhân viên

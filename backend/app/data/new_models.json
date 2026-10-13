@@ -1,5 +1,18 @@
 {
   "max_display": 6,
   "next_id": 1,
-  "models": []
+  "models": [
+    {
+      "id": "B1",
+      "image_url": "/static/products/new_models/model_B1.jpg",
+      "description": "Áo Basketball trắng Oversize",
+      "added_at": "2026-10-14T02:19:46.940571"
+    },
+    {
+      "id": "B2",
+      "image_url": "/static/products/new_models/model_B2.jpg",
+      "description": "Áo Basketball đen Oversize",
+      "added_at": "2026-10-14T02:19:46.947127"
+    }
+  ]
 }
