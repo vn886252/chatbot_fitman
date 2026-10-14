@@ -57,7 +57,7 @@ async def generate_response(
 
     # Multi-turn tool calling loop (tối đa 3 lượt)
     max_turns = 3
-    async with httpx.AsyncClient(timeout=120.0) as client:
+    async with httpx.AsyncClient(timeout=25.0) as client:
         for turn in range(max_turns):
             res_data = None
             try:
@@ -74,23 +74,46 @@ async def generate_response(
                 res.raise_for_status()
                 res_data = res.json()
             except Exception as e:
-                logger.warning(f"Error calling primary LLM at {api_url}: {e}. Trying fallback port...")
-                fallback_url = f"http://127.0.0.1:{settings.QWEN_FALLBACK_PORT}/v1/chat/completions"
-                try:
-                    res = await client.post(
-                        fallback_url,
-                        json={
-                            "model": model_name,
-                            "messages": full_messages,
-                            "tools": FITMAN_TOOLS,
-                            "tool_choice": "auto"
-                        },
-                        headers={"Content-Type": "application/json"}
-                    )
-                    res.raise_for_status()
-                    res_data = res.json()
-                except Exception as fb_err:
-                    logger.error(f"Fallback LLM call failed: {fb_err}")
+                logger.warning(f"Error calling primary LLM at {api_url}: {e}.")
+                # Nếu dùng OpenAI (Render production), thử retry 1 lần sau 1.5s chống rớt mạng tạm thời
+                if not settings.USE_LOCAL_LLM and settings.OPENAI_API_KEY:
+                    try:
+                        logger.info("Retrying OpenAI call once after 1.5s...")
+                        await asyncio.sleep(1.5)
+                        res = await client.post(
+                            api_url,
+                            json={
+                                "model": model_name,
+                                "messages": full_messages,
+                                "tools": FITMAN_TOOLS,
+                                "tool_choice": "auto"
+                            },
+                            headers=headers
+                        )
+                        res.raise_for_status()
+                        res_data = res.json()
+                    except Exception as retry_err:
+                        logger.error(f"OpenAI retry also failed: {retry_err}")
+                elif settings.USE_LOCAL_LLM:
+                    # Chỉ fallback Qwen port nếu đang bật local LLM
+                    fallback_url = f"http://127.0.0.1:{settings.QWEN_FALLBACK_PORT}/v1/chat/completions"
+                    try:
+                        res = await client.post(
+                            fallback_url,
+                            json={
+                                "model": model_name,
+                                "messages": full_messages,
+                                "tools": FITMAN_TOOLS,
+                                "tool_choice": "auto"
+                            },
+                            headers={"Content-Type": "application/json"}
+                        )
+                        res.raise_for_status()
+                        res_data = res.json()
+                    except Exception as fb_err:
+                        logger.error(f"Fallback LLM call failed: {fb_err}")
+
+                if not res_data:
                     if not reply_text:
                         return {
                             "reply_text": "Dạ em chào anh! Hiện tại hệ thống đang bận một chút, anh vui lòng để lại lời nhắn em hỗ trợ ngay nhé ạ!",

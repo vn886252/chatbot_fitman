@@ -1,5 +1,7 @@
+import time
+import asyncio
 import logging
-from collections import defaultdict
+from collections import defaultdict, OrderedDict
 from fastapi import APIRouter, Request, Response
 from app.config import settings
 from app.services.llm_service import generate_response
@@ -21,6 +23,46 @@ router = APIRouter()
 # Tối đa 20 messages để tránh context quá dài
 _conversation_history: dict[str, list] = defaultdict(list)
 MAX_HISTORY = 20
+
+# 1. Chống Facebook Webhook retry lặp lại cùng một message ID (mid)
+_processed_mids: OrderedDict[str, float] = OrderedDict()
+MAX_PROCESSED_MIDS = 5000
+MID_TTL_SECONDS = 600.0  # 10 phút
+
+# 2. Khóa tuần tự theo từng khách hàng (tránh race condition khi khách nhắn nhiều câu dồn dập < 1s)
+_user_locks: dict[str, asyncio.Lock] = defaultdict(asyncio.Lock)
+
+# 3. Rate limiter cho tin nhắn báo lỗi/hệ thống bận (tối đa 1 thông báo mỗi 60 giây cho mỗi khách)
+_last_error_sent: dict[str, float] = {}
+ERROR_SUPPRESS_WINDOW = 60.0
+
+
+def is_mid_duplicate(mid: str) -> bool:
+    """Kiểm tra và ghi nhận mid. Trả về True nếu mid đã từng được xử lý trong cache."""
+    if not mid:
+        return False
+    now = time.time()
+    # Dọn dẹp cache quá hạn
+    while _processed_mids and (now - next(iter(_processed_mids.values()))) > MID_TTL_SECONDS:
+        _processed_mids.popitem(last=False)
+
+    if mid in _processed_mids:
+        return True
+
+    _processed_mids[mid] = now
+    if len(_processed_mids) > MAX_PROCESSED_MIDS:
+        _processed_mids.popitem(last=False)
+    return False
+
+
+def should_suppress_error(sender_id: str) -> bool:
+    """Trả về True nếu vừa gửi thông báo bận/lỗi cho khách này trong vòng 60 giây."""
+    now = time.time()
+    last_time = _last_error_sent.get(sender_id, 0.0)
+    if (now - last_time) < ERROR_SUPPRESS_WINDOW:
+        return True
+    _last_error_sent[sender_id] = now
+    return False
 
 
 def _trim_history(history: list) -> list:
@@ -104,8 +146,14 @@ async def handle_webhook(request: Request):
                 # 2. Xử lý tin nhắn từ Khách hàng
                 # -------------------------------------------------------------
                 user_text = message.get("text")
+                mid = message.get("mid")
                 attachments = message.get("attachments") or []
                 is_sticker = bool(message.get("sticker_id"))
+
+                # Chống Facebook Webhook retry xử lý lặp lại cùng một mid
+                if mid and is_mid_duplicate(mid):
+                    logger.info(f"[Webhook] Duplicate mid '{mid}' from sender {sender_id}. Skipping retry.")
+                    continue
 
                 image_urls = []
                 if not is_sticker and attachments:
@@ -119,113 +167,125 @@ async def handle_webhook(request: Request):
 
                 if sender_id and (user_text or has_image):
                     record_last_customer(sender_id)
-                    try:
-                        # Kiểm tra xem Bot có đang bị tạm dừng với khách này không (do người thật đang chat hoặc mới yêu cầu)
-                        paused, remaining = is_bot_paused(sender_id)
-                        if paused:
-                            logger.info(f"[Handover] Bot is paused for customer {sender_id} ({remaining:.0f}s left). Skipping auto-reply.")
-                            continue
+                    user_lock = _user_locks[sender_id]
+                    async with user_lock:
+                        try:
+                            # Kiểm tra xem Bot có đang bị tạm dừng với khách này không (do người thật đang chat hoặc mới yêu cầu)
+                            paused, remaining = is_bot_paused(sender_id)
+                            if paused:
+                                logger.info(f"[Handover] Bot is paused for customer {sender_id} ({remaining:.0f}s left). Skipping auto-reply.")
+                                continue
 
-                        # 2a. Nếu khách hàng gửi HÌNH ẢNH (mẫu áo/quần)
-                        if has_image:
-                            logger.info(f"[Image] Customer {sender_id} sent image(s): {len(image_urls)}")
+                            # 2a. Nếu khách hàng gửi HÌNH ẢNH (mẫu áo/quần)
+                            if has_image:
+                                logger.info(f"[Image] Customer {sender_id} sent image(s): {len(image_urls)}")
+                                customer_name = await get_customer_name(sender_id)
+
+                                # Gửi cảnh báo ngay cho shop owner qua Telegram (kèm ảnh nếu có)
+                                await send_handover_alert(
+                                    customer_id=sender_id,
+                                    customer_name=customer_name,
+                                    event_type="customer_sent_image",
+                                    user_text=user_text or "[Đã gửi ảnh mẫu]",
+                                    image_url=image_urls[0] if image_urls else None
+                                )
+
+                                # Phản hồi nhẹ nhàng giữ chân khách trên Facebook Messenger
+                                if user_text:
+                                    image_reply = (
+                                        "Dạ shop đã nhận được ảnh mẫu của anh/chị rồi ạ! "
+                                        "Em đã báo nhân viên vào kiểm tra mẫu ngay cho mình trong ít phút nhé ạ! 💪\n\n"
+                                        "Anh/chị có thể nhắn thêm chiều cao + cân nặng để shop hỗ trợ tư vấn size luôn nha!"
+                                    )
+                                else:
+                                    image_reply = (
+                                        "Dạ shop đã nhận được ảnh mẫu của anh/chị rồi ạ! "
+                                        "Anh/chị đợi nhân viên shop kiểm tra kho và phản hồi lại ngay trong ít phút nhé ạ! 💪\n\n"
+                                        "(Hoặc anh/chị có thể nhắn trước chiều cao + cân nặng để shop chọn size luôn nha)"
+                                    )
+
+                                await send_text_message(sender_id, image_reply)
+                                history_entry = f"[Khách gửi ảnh mẫu]{f': {user_text}' if user_text else ''}"
+                                _conversation_history[sender_id].append({"role": "user", "content": history_entry})
+                                _conversation_history[sender_id].append({"role": "assistant", "content": image_reply})
+                                continue
+
+                            # Kiểm tra nếu khách hàng yêu cầu gặp người thật / nhân viên
+                            if check_human_request_intent(user_text):
+                                logger.info(f"[Handover] Customer {sender_id} requested human: '{user_text}'")
+                                pause_bot(sender_id, reason="customer_requested")
+                                customer_name = await get_customer_name(sender_id)
+
+                                # Gửi cảnh báo ngay cho shop owner qua Telegram
+                                await send_handover_alert(
+                                    customer_id=sender_id,
+                                    customer_name=customer_name,
+                                    event_type="customer_requested",
+                                    user_text=user_text
+                                )
+
+                                # Phản hồi nhẹ nhàng cho khách rồi dừng tự động
+                                handoff_reply = "Dạ em đã thông báo cho nhân viên shop rồi ạ! Anh/chị đợi nhân viên vào hỗ trợ mình trong giây lát nha! 💪"
+                                await send_text_message(sender_id, handoff_reply)
+                                _conversation_history[sender_id].append({"role": "user", "content": user_text})
+                                _conversation_history[sender_id].append({"role": "assistant", "content": handoff_reply})
+                                continue
+
+                            # Lấy lịch sử hội thoại của user này
+                            history = _trim_history(_conversation_history[sender_id])
+
+                            # Lấy tên khách hàng từ Facebook Graph API
                             customer_name = await get_customer_name(sender_id)
 
-                            # Gửi cảnh báo ngay cho shop owner qua Telegram (kèm ảnh nếu có)
-                            await send_handover_alert(
-                                customer_id=sender_id,
+                            res = await generate_response(
+                                history,
+                                user_text,
                                 customer_name=customer_name,
-                                event_type="customer_sent_image",
-                                user_text=user_text or "[Đã gửi ảnh mẫu]",
-                                image_url=image_urls[0] if image_urls else None
+                                sender_id=sender_id
                             )
+                            reply_text = res.get("reply_text", "")
+                            suggested_images = res.get("suggested_images") or []
+                            if not suggested_images and res.get("suggested_image"):
+                                suggested_images = [res.get("suggested_image")]
 
-                            # Phản hồi nhẹ nhàng giữ chân khách trên Facebook Messenger
-                            if user_text:
-                                image_reply = (
-                                    "Dạ shop đã nhận được ảnh mẫu của anh/chị rồi ạ! "
-                                    "Em đã báo nhân viên vào kiểm tra mẫu ngay cho mình trong ít phút nhé ạ! 💪\n\n"
-                                    "Anh/chị có thể nhắn thêm chiều cao + cân nặng để shop hỗ trợ tư vấn size luôn nha!"
+                            # Cập nhật lịch sử — chỉ lưu user + assistant có text content
+                            # Bỏ: role=system, role=tool, assistant chỉ có tool_calls (không có text)
+                            updated = res.get("updated_messages", [])
+                            if updated:
+                                clean_history = []
+                                for m in updated:
+                                    role = m.get("role")
+                                    if role == "user":
+                                        clean_history.append(m)
+                                    elif role == "assistant" and m.get("content"):
+                                        # Chỉ lưu assistant message có nội dung text thực sự
+                                        clean_history.append({"role": "assistant", "content": m["content"]})
+                                    _conversation_history[sender_id] = clean_history
+
+                            # Gửi câu trả lời văn bản
+                            if reply_text:
+                                # Nếu là câu thông báo bận/lỗi hệ thống, áp dụng rate-limit để không spam khách
+                                if "Hiện tại hệ thống đang bận" in reply_text:
+                                    if not should_suppress_error(sender_id):
+                                        await send_text_message(sender_id, reply_text)
+                                    else:
+                                        logger.warning(f"[Webhook] Suppressed repeated busy error message for {sender_id}.")
+                                else:
+                                    await send_text_message(sender_id, reply_text)
+
+                            # Gửi tất cả ảnh đính kèm
+                            for img in suggested_images:
+                                await send_image_message(sender_id, img)
+
+                        except Exception as e:
+                            logger.error(f"Error handling message for {sender_id}: {e}", exc_info=True)
+                            if not should_suppress_error(sender_id):
+                                await send_text_message(
+                                    sender_id,
+                                    "Dạ em chào anh! Hiện tại hệ thống đang bận một chút, anh vui lòng nhắn lại sau ít phút nhé ạ."
                                 )
                             else:
-                                image_reply = (
-                                    "Dạ shop đã nhận được ảnh mẫu của anh/chị rồi ạ! "
-                                    "Anh/chị đợi nhân viên shop kiểm tra kho và phản hồi lại ngay trong ít phút nhé ạ! 💪\n\n"
-                                    "(Hoặc anh/chị có thể nhắn trước chiều cao + cân nặng để shop chọn size luôn nha)"
-                                )
-
-                            await send_text_message(sender_id, image_reply)
-                            history_entry = f"[Khách gửi ảnh mẫu]{f': {user_text}' if user_text else ''}"
-                            _conversation_history[sender_id].append({"role": "user", "content": history_entry})
-                            _conversation_history[sender_id].append({"role": "assistant", "content": image_reply})
-                            continue
-
-                        # Kiểm tra nếu khách hàng yêu cầu gặp người thật / nhân viên
-                        if check_human_request_intent(user_text):
-                            logger.info(f"[Handover] Customer {sender_id} requested human: '{user_text}'")
-                            pause_bot(sender_id, reason="customer_requested")
-                            customer_name = await get_customer_name(sender_id)
-
-                            # Gửi cảnh báo ngay cho shop owner qua Telegram
-                            await send_handover_alert(
-                                customer_id=sender_id,
-                                customer_name=customer_name,
-                                event_type="customer_requested",
-                                user_text=user_text
-                            )
-
-                            # Phản hồi nhẹ nhàng cho khách rồi dừng tự động
-                            handoff_reply = "Dạ em đã thông báo cho nhân viên shop rồi ạ! Anh/chị đợi nhân viên vào hỗ trợ mình trong giây lát nha! 💪"
-                            await send_text_message(sender_id, handoff_reply)
-                            _conversation_history[sender_id].append({"role": "user", "content": user_text})
-                            _conversation_history[sender_id].append({"role": "assistant", "content": handoff_reply})
-                            continue
-
-                        # Lấy lịch sử hội thoại của user này
-                        history = _trim_history(_conversation_history[sender_id])
-
-                        # Lấy tên khách hàng từ Facebook Graph API
-                        customer_name = await get_customer_name(sender_id)
-
-                        res = await generate_response(
-                            history,
-                            user_text,
-                            customer_name=customer_name,
-                            sender_id=sender_id
-                        )
-                        reply_text = res.get("reply_text", "")
-                        suggested_images = res.get("suggested_images") or []
-                        if not suggested_images and res.get("suggested_image"):
-                            suggested_images = [res.get("suggested_image")]
-
-                        # Cập nhật lịch sử — chỉ lưu user + assistant có text content
-                        # Bỏ: role=system, role=tool, assistant chỉ có tool_calls (không có text)
-                        updated = res.get("updated_messages", [])
-                        if updated:
-                            clean_history = []
-                            for m in updated:
-                                role = m.get("role")
-                                if role == "user":
-                                    clean_history.append(m)
-                                elif role == "assistant" and m.get("content"):
-                                    # Chỉ lưu assistant message có nội dung text thực sự
-                                    clean_history.append({"role": "assistant", "content": m["content"]})
-                            _conversation_history[sender_id] = clean_history
-
-                        # Gửi câu trả lời văn bản
-                        if reply_text:
-                            await send_text_message(sender_id, reply_text)
-
-                        # Gửi tất cả ảnh đính kèm
-                        for img in suggested_images:
-                            await send_image_message(sender_id, img)
-
-                    except Exception as e:
-                        logger.error(f"Error handling message for {sender_id}: {e}", exc_info=True)
-                        await send_text_message(
-                            sender_id,
-                            "Dạ em chào anh! Hiện tại hệ thống đang bận một chút, anh vui lòng nhắn lại sau ít phút nhé ạ."
-                        )
+                                logger.warning(f"[Webhook] Suppressed repeated exception error message for {sender_id}.")
 
         return {"status": "EVENT_RECEIVED"}
     return {"status": "NOT_A_PAGE_EVENT"}

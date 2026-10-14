@@ -176,6 +176,13 @@ async def health():
         "mode": "local_qwen" if settings.USE_LOCAL_LLM else "openai"
     }
 
+@app.get("/ping")
+async def ping():
+    return {
+        "status": "pong",
+        "timestamp": datetime.now(timezone.utc).astimezone(ICT).isoformat()
+    }
+
 @app.post("/api/chat")
 async def chat(request: ChatRequest):
     result = await generate_response(request.messages or [], request.message)
