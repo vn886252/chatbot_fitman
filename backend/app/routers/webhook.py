@@ -260,7 +260,8 @@ async def handle_webhook(request: Request):
                                     elif role == "assistant" and m.get("content"):
                                         # Chỉ lưu assistant message có nội dung text thực sự
                                         clean_history.append({"role": "assistant", "content": m["content"]})
-                                    _conversation_history[sender_id] = clean_history
+                                # Gán history sau khi đã duyệt hết toàn bộ updated messages
+                                _conversation_history[sender_id] = clean_history
 
                             # Gửi câu trả lời văn bản
                             if reply_text:

@@ -195,10 +195,9 @@ def unpause_bot(customer_id: str) -> None:
 
 
 def record_last_customer(customer_id: str) -> None:
-    """Lưu lại ID của khách hàng gần nhất vừa chat."""
+    """Lưu lại ID của khách hàng gần nhất vừa chat (chỉ cập nhật memory, không ghi file ngay)."""
     if customer_id:
         _global_state["last_customer_id"] = customer_id
-        _save_state()
 
 
 def get_last_customer() -> str:
