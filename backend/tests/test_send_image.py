@@ -48,26 +48,55 @@ async def test_send_image_message_remote_url():
 
 
 @pytest.mark.asyncio
-async def test_send_image_carousel():
-    from app.services.facebook_service import send_image_carousel
+async def test_send_image_grid():
+    from app.services.facebook_service import send_image_grid
     with patch("httpx.AsyncClient.post", new_callable=AsyncMock) as mock_post:
         mock_resp = MagicMock()
         mock_resp.status_code = 200
-        mock_resp.json.return_value = {"message_id": "mid.carousel_789"}
+        mock_resp.json.return_value = {"message_id": "mid.grid_123"}
         mock_post.return_value = mock_resp
 
         images = ["/static/products/mau_moi_1.png", "/static/products/mau_moi_2.png"]
-        result = await send_image_carousel("fb_user_999", images)
+        result = await send_image_grid("fb_user_999", images)
         assert result is True
 
         mock_post.assert_called_once()
         call_json = mock_post.call_args[1]["json"]
         assert call_json["message"]["attachment"]["type"] == "template"
-        assert call_json["message"]["attachment"]["payload"]["template_type"] == "generic"
+        assert call_json["message"]["attachment"]["payload"]["template_type"] == "image_grid"
         elements = call_json["message"]["attachment"]["payload"]["elements"]
-        assert len(elements) == 2
-        assert "Mẫu mới 1" in elements[0]["title"]
-        assert "Mẫu mới 2" in elements[1]["title"]
+        assert len(elements[0]["images"]) == 2
+        assert "mau_moi_1.png" in elements[0]["images"][0]["url"]
+        assert "mau_moi_2.png" in elements[0]["images"][1]["url"]
+
+
+@pytest.mark.asyncio
+async def test_send_image_grid_fallback_attachments():
+    from app.services.facebook_service import send_image_grid
+    with patch("httpx.AsyncClient.post", new_callable=AsyncMock) as mock_post:
+        # Lần 1: image_grid thất bại (ví dụ 400)
+        resp_fail = MagicMock()
+        resp_fail.status_code = 400
+        resp_fail.text = "Template not supported"
+
+        # Lần 2: attachments array thành công (200)
+        resp_ok = MagicMock()
+        resp_ok.status_code = 200
+        resp_ok.json.return_value = {"message_id": "mid.attachments_456"}
+
+        mock_post.side_effect = [resp_fail, resp_ok]
+
+        images = ["/static/products/mau_moi_1.png", "/static/products/mau_moi_2.png"]
+        result = await send_image_grid("fb_user_999", images)
+        assert result is True
+
+        assert mock_post.call_count == 2
+        call2_json = mock_post.call_args_list[1][1]["json"]
+        assert "attachments" in call2_json["message"]
+        assert len(call2_json["message"]["attachments"]) == 2
+        assert "mau_moi_1.png" in call2_json["message"]["attachments"][0]["payload"]["url"]
+        assert "mau_moi_2.png" in call2_json["message"]["attachments"][1]["payload"]["url"]
+
 
 
 def test_tim_anh_san_pham_mau_moi_only_two():

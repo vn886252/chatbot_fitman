@@ -39,11 +39,12 @@ async def get_customer_name(recipient_id: str) -> str:
     return "Khách hàng"
 
 
-async def send_text_message(recipient_id: str, text: str) -> bool:
+async def send_text_message(recipient_id: str, text: str, notification_type: str = "REGULAR") -> bool:
     url = f"https://graph.facebook.com/v19.0/me/messages?access_token={settings.FB_PAGE_ACCESS_TOKEN}"
     payload = {
         "recipient": {"id": recipient_id},
         "messaging_type": "RESPONSE",
+        "notification_type": notification_type,
         "message": {"text": text}
     }
     try:
@@ -66,7 +67,7 @@ async def send_text_message(recipient_id: str, text: str) -> bool:
         return False
 
 
-async def send_image_message(recipient_id: str, image_url: str) -> bool:
+async def send_image_message(recipient_id: str, image_url: str, notification_type: str = "REGULAR") -> bool:
     """
     Gửi ảnh cho khách qua Facebook Messenger Send API.
     1. Ưu tiên: Nếu ảnh có file cục bộ trên máy chủ (ví dụ /static/products/...),
@@ -103,6 +104,7 @@ async def send_image_message(recipient_id: str, image_url: str) -> bool:
             data = {
                 "recipient": json.dumps({"id": recipient_id}),
                 "messaging_type": "RESPONSE",
+                "notification_type": notification_type,
                 "message": json.dumps({
                     "attachment": {
                         "type": "image",
@@ -137,6 +139,7 @@ async def send_image_message(recipient_id: str, image_url: str) -> bool:
     payload = {
         "recipient": {"id": recipient_id},
         "messaging_type": "RESPONSE",
+        "notification_type": notification_type,
         "message": {
             "attachment": {
                 "type": "image",
@@ -164,6 +167,99 @@ async def send_image_message(recipient_id: str, image_url: str) -> bool:
                 return False
     except Exception as e:
         logger.error(f"Exception occurred while sending image message: {e}")
+        return False
+
+
+async def send_image_grid(recipient_id: str, images: list[str]) -> bool:
+    """
+    Gửi cụm ảnh dạng Image Grid / Attachments Album của Facebook Messenger (2 đến 6 ảnh).
+    Facebook tự động xếp các ảnh thành cụm lưới / album trong 1 tin nhắn duy nhất:
+    - Chỉ phát đúng 1 tiếng chuông (ting) duy nhất.
+    - Khách chạm vào ảnh nào là mở to toàn màn hình ảnh đó để phóng to/zoom rõ nét.
+    - Không bị cắt xén, không có card chữ vướng víu như Carousel.
+    """
+    if not settings.FB_PAGE_ACCESS_TOKEN or not recipient_id or not images:
+        return False
+
+    url = f"https://graph.facebook.com/v19.0/me/messages?access_token={settings.FB_PAGE_ACCESS_TOKEN}"
+    resolved_urls = [_resolve_image_url(img) for img in images[:6]]
+    if len(resolved_urls) < 2:
+        return False
+
+    # 1. Thử gửi dạng Image Grid Template
+    grid_images = [{"url": u} for u in resolved_urls]
+    payload_grid = {
+        "recipient": {"id": recipient_id},
+        "messaging_type": "RESPONSE",
+        "message": {
+            "attachment": {
+                "type": "template",
+                "payload": {
+                    "template_type": "image_grid",
+                    "elements": [
+                        {
+                            "images": grid_images
+                        }
+                    ]
+                }
+            }
+        }
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.post(url, json=payload_grid)
+            if response.status_code == 200:
+                try:
+                    res_json = response.json()
+                    mid = res_json.get("message_id")
+                    if mid:
+                        record_bot_sent(mid)
+                except Exception:
+                    pass
+                logger.info(f"Image grid ({len(grid_images)} images) sent successfully to {recipient_id}.")
+                return True
+            else:
+                logger.warning(f"Facebook image_grid returned {response.status_code}: {response.text}. Trying attachments array fallback.")
+    except Exception as e:
+        logger.warning(f"Exception sending image_grid: {e}")
+
+    # 2. Thử gửi dạng attachments array (Official Messenger Multi-image Album)
+    payload_attachments = {
+        "recipient": {"id": recipient_id},
+        "messaging_type": "RESPONSE",
+        "message": {
+            "attachments": [
+                {
+                    "type": "image",
+                    "payload": {
+                        "url": u,
+                        "is_reusable": True
+                    }
+                }
+                for u in resolved_urls
+            ]
+        }
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.post(url, json=payload_attachments)
+            if response.status_code == 200:
+                try:
+                    res_json = response.json()
+                    mid = res_json.get("message_id")
+                    if mid:
+                        record_bot_sent(mid)
+                except Exception:
+                    pass
+                logger.info(f"Attachments album ({len(resolved_urls)} images) sent successfully to {recipient_id}.")
+                return True
+            else:
+                logger.warning(f"Facebook attachments array returned {response.status_code}: {response.text}")
+                return False
+    except Exception as e:
+        logger.warning(f"Exception sending attachments array: {e}")
         return False
 
 
