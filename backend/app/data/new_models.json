@@ -1,6 +1,6 @@
 {
-  "max_display": 6,
-  "next_id": 1,
+  "max_display": 2,
+  "next_id": 3,
   "models": [
     {
       "id": "B1",
@@ -13,6 +13,18 @@
       "image_url": "/static/products/new_models/model_B2.jpg",
       "description": "Áo Basketball đen Oversize",
       "added_at": "2026-10-14T02:19:46.947127"
+    },
+    {
+      "id": "M1",
+      "image_url": "/static/products/mau_moi_1.png",
+      "description": "Mẫu mới 1: Áo thun Oversize Fitman (Màu trắng/kem)",
+      "added_at": "2026-10-18T00:00:00"
+    },
+    {
+      "id": "M2",
+      "image_url": "/static/products/mau_moi_2.png",
+      "description": "Mẫu mới 2: Áo thun Oversize Fitman (Màu đen)",
+      "added_at": "2026-10-18T00:00:00"
     }
   ]
 }

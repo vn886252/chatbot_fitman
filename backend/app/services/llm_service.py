@@ -309,13 +309,11 @@ async def generate_response(
             except Exception:
                 pass
             if not suggested_images:
-                for img in ALL_ANH_AO + ALL_ANH_QUAN:
-                    if img not in suggested_images:
-                        suggested_images.append(img)
+                suggested_images = ["/static/products/mau_moi_1.png", "/static/products/mau_moi_2.png"]
 
-        # Nếu hỏi xem mẫu cũ
-        elif any(k in lower_user for k in ["mẫu cũ", "mau cu", "mẫu trước", "mau truoc"]):
-            for img in ALL_ANH_AO + ALL_ANH_QUAN:
+        # Nếu hỏi xem mẫu khác / mẫu cũ
+        elif any(k in lower_user for k in ["mẫu khác", "mau khac", "mẫu nào khác", "mau nao khac", "mẫu khác đâu", "xem mẫu khác", "mẫu cũ", "mau cu", "mẫu trước", "mau truoc"]):
+            for img in ALL_ANH_AO:
                 if img not in suggested_images:
                     suggested_images.append(img)
             try:
@@ -327,11 +325,26 @@ async def generate_response(
             except Exception:
                 pass
 
-        # Nếu hỏi xem tất cả (cả áo lẫn quần) hoặc xem mẫu chung
-        elif any(k in lower_user for k in ["tất cả", "tat ca", "hết", "het", "xem hết", "all", "cho xem mẫu", "xem mẫu", "mẫu đâu", "xem mau", "cho xem mau"]):
-            for img in ALL_ANH_AO + ALL_ANH_QUAN:
+        # Nếu hỏi xem tất cả (cả áo lẫn quần)
+        elif any(k in lower_user for k in ["tất cả", "tat ca", "hết", "het", "xem hết", "all", "tất cả mẫu", "toàn bộ", "xem tất cả"]):
+            for img in ["/static/products/mau_moi_1.png", "/static/products/mau_moi_2.png"] + list(ALL_ANH_AO) + list(ALL_ANH_QUAN):
                 if img not in suggested_images:
                     suggested_images.append(img)
+
+        # Nếu hỏi xem mẫu chung chung ("cho xem mẫu", "xem mẫu", "mẫu đâu", "cho xem mau")
+        elif any(k in lower_user for k in ["cho xem mẫu", "xem mẫu", "mẫu đâu", "cho xem mau", "xem mau", "sản phẩm", "san pham"]):
+            # Ưu tiên gửi đúng 2 mẫu mới để tránh spam khách
+            try:
+                from app.services.new_models_service import get_new_models
+                new_m = get_new_models()
+                for m in new_m:
+                    img = m.get("image_url")
+                    if img and img not in suggested_images:
+                        suggested_images.append(img)
+            except Exception:
+                pass
+            if not suggested_images:
+                suggested_images = ["/static/products/mau_moi_1.png", "/static/products/mau_moi_2.png"]
 
         # Nếu hỏi xem ảnh quần
         elif any(k in lower_user for k in ["xem ảnh quần", "ảnh quần", "mẫu quần", "xem mẫu quần", "cac mau quan", "các mẫu quần", "cho xem quần", "xem quan"]):

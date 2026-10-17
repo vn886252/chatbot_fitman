@@ -5,7 +5,7 @@ from collections import defaultdict, OrderedDict
 from fastapi import APIRouter, Request, Response
 from app.config import settings
 from app.services.llm_service import generate_response
-from app.services.facebook_service import send_text_message, send_image_message, get_customer_name
+from app.services.facebook_service import send_text_message, send_image_message, send_image_carousel, get_customer_name
 from app.services.handover_service import (
     is_bot_sent,
     record_human_message,
@@ -274,9 +274,15 @@ async def handle_webhook(request: Request):
                                 else:
                                     await send_text_message(sender_id, reply_text)
 
-                            # Gửi tất cả ảnh đính kèm
-                            for img in suggested_images:
-                                await send_image_message(sender_id, img)
+                            # Gửi ảnh đính kèm (nếu >= 2 ảnh, ưu tiên gửi Carousel cụm ảnh trượt để tránh spam khách)
+                            if len(suggested_images) > 1:
+                                carousel_ok = await send_image_carousel(sender_id, suggested_images)
+                                if not carousel_ok:
+                                    logger.info(f"[Webhook] Carousel failed, falling back to individual image messages.")
+                                    for img in suggested_images:
+                                        await send_image_message(sender_id, img)
+                            elif len(suggested_images) == 1:
+                                await send_image_message(sender_id, suggested_images[0])
 
                         except Exception as e:
                             logger.error(f"Error handling message for {sender_id}: {e}", exc_info=True)

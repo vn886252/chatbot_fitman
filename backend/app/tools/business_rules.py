@@ -137,11 +137,14 @@ def tim_anh_san_pham(ma_san_pham_hoac_tu_khoa: str) -> Dict[str, Any]:
         except Exception:
             pass
         if not image_urls:
-            image_urls = ALL_ANH_AO + ALL_ANH_QUAN
+            image_urls = ["/static/products/mau_moi_1.png", "/static/products/mau_moi_2.png"]
 
-    # 0b. Khách hỏi xem MẪU CŨ / BỘ SƯU TẬP TRƯỚC
-    elif any(k in tu_khoa_lower for k in ["mẫu cũ", "mau cu", "mẫu trước", "mau truoc"]):
-        image_urls = list(ALL_ANH_AO + ALL_ANH_QUAN)
+    # 0b. Khách hỏi xem MẪU KHÁC / MẪU CŨ / BỘ SƯU TẬP TRƯỚC
+    elif any(k in tu_khoa_lower for k in [
+        "mẫu khác", "mau khac", "mẫu nào khác", "mau nao khac", "mẫu khác đâu", "xem mẫu khác",
+        "mẫu cũ", "mau cu", "mẫu trước", "mau truoc", "bộ sưu tập cũ", "bo suu tap cu"
+    ]):
+        image_urls = list(ALL_ANH_AO)
         try:
             from app.services.new_models_service import get_old_models
             for m in get_old_models():
@@ -151,9 +154,30 @@ def tim_anh_san_pham(ma_san_pham_hoac_tu_khoa: str) -> Dict[str, Any]:
         except Exception:
             pass
 
-    # 0c. Khách hỏi xem mẫu chung chung ("cho xem mẫu", "xem mẫu", "mẫu đâu", "mẫu", "mau", "xem mau", "sản phẩm", "san pham")
+    # 0c. Khách hỏi xem TẤT CẢ ("tất cả", "tat ca", "xem hết", "xem all", "tất cả mẫu", "toàn bộ", "xem tất cả")
+    elif any(k in tu_khoa_lower for k in ["tất cả", "tat ca", "xem hết", "xem het", "all", "xem all", "tất cả mẫu", "tat ca mau", "toàn bộ", "toan bo"]):
+        image_urls = ["/static/products/mau_moi_1.png", "/static/products/mau_moi_2.png"] + list(ALL_ANH_AO) + list(ALL_ANH_QUAN)
+        try:
+            from app.services.new_models_service import get_old_models
+            for m in get_old_models():
+                img = m.get("image_url")
+                if img and img not in image_urls:
+                    image_urls.append(img)
+        except Exception:
+            pass
+
+    # 0d. Khách hỏi xem mẫu chung chung ("cho xem mẫu", "xem mẫu", "mẫu đâu", "cho xem mau", "xem mau", "sản phẩm", "san pham")
     elif any(k in tu_khoa_lower for k in ["cho xem mẫu", "xem mẫu", "mẫu đâu", "cho xem mau", "xem mau", "sản phẩm", "san pham"]) or tu_khoa_lower in ("mẫu", "mau"):
-        image_urls = ALL_ANH_AO + ALL_ANH_QUAN
+        # Ưu tiên gửi đúng 2 mẫu mới nhất để không spam khách
+        try:
+            from app.services.new_models_service import get_new_models
+            new_models = get_new_models()
+            if new_models:
+                image_urls = [m["image_url"] for m in new_models if m.get("image_url")]
+        except Exception:
+            pass
+        if not image_urls:
+            image_urls = ["/static/products/mau_moi_1.png", "/static/products/mau_moi_2.png"]
 
     # 1. Khách hỏi xem toàn bộ ảnh Quần
     elif any(k in tu_khoa_lower for k in ["quần", "quan", "short", "đùi"]):

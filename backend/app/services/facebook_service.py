@@ -188,3 +188,83 @@ async def send_quick_replies(recipient_id: str, text: str, options: list[dict]) 
     except Exception as e:
         logger.error(f"Exception occurred while sending quick replies: {e}")
         return False
+
+
+async def send_image_carousel(recipient_id: str, images: list[str]) -> bool:
+    """
+    Gửi cụm ảnh dạng Generic Template (Carousel) của Facebook Messenger.
+    Giúp gộp các ảnh vào 1 tin nhắn duy nhất trượt ngang, không spam nhiều thông báo cho khách.
+    """
+    if not settings.FB_PAGE_ACCESS_TOKEN or not recipient_id or not images:
+        return False
+
+    url = f"https://graph.facebook.com/v19.0/me/messages?access_token={settings.FB_PAGE_ACCESS_TOKEN}"
+    elements = []
+    for idx, img in enumerate(images[:10], 1):
+        full_url = _resolve_image_url(img)
+        title = f"Mẫu {idx}"
+        subtitle = "Cotton 100% 260GSM, Form Oversize Gym Bro"
+        img_low = img.lower()
+        if "mau_moi_1" in img_low or "moi1" in img_low:
+            title = "Mẫu mới 1: Trắng / Kem"
+            subtitle = "Form Oversize CBUM, Cotton 260GSM"
+        elif "mau_moi_2" in img_low or "moi2" in img_low:
+            title = "Mẫu mới 2: Đen"
+            subtitle = "Form Oversize CBUM, Cotton 260GSM"
+        elif "model_b1" in img_low:
+            title = "Mẫu B1: Basketball Trắng"
+        elif "model_b2" in img_low:
+            title = "Mẫu B2: Basketball Đen"
+        elif "nhom_1" in img_low:
+            title = "Áo CBUM Đen (Mẫu 1-20)"
+        elif "nhom_2" in img_low:
+            title = "Áo CBUM Trắng (Mẫu 2-14)"
+        elif "nhom_3" in img_low:
+            title = "Quần short CBUM (Q1-Q4)"
+        elif "nhom_4" in img_low:
+            title = "Áo Wolves / Punk"
+        elif "nhom_5" in img_low:
+            title = "Áo CBUM & Quần (Q6-Q7)"
+        elif "nhom_6" in img_low:
+            title = "Áo CBUM (Mẫu 43-47)"
+
+        elements.append({
+            "title": title,
+            "image_url": full_url,
+            "subtitle": subtitle
+        })
+
+    payload = {
+        "recipient": {"id": recipient_id},
+        "messaging_type": "RESPONSE",
+        "message": {
+            "attachment": {
+                "type": "template",
+                "payload": {
+                    "template_type": "generic",
+                    "elements": elements
+                }
+            }
+        }
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.post(url, json=payload)
+            if response.status_code == 200:
+                try:
+                    res_json = response.json()
+                    mid = res_json.get("message_id")
+                    if mid:
+                        record_bot_sent(mid)
+                except Exception:
+                    pass
+                logger.info(f"Image carousel ({len(elements)} items) sent successfully to {recipient_id}.")
+                return True
+            else:
+                logger.warning(f"Facebook carousel returned {response.status_code}: {response.text}")
+                return False
+    except Exception as e:
+        logger.warning(f"Exception sending image carousel: {e}")
+        return False
+
