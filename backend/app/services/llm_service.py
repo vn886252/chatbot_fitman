@@ -274,6 +274,8 @@ async def generate_response(
     reply_text = re.sub(r'!\[.*?\]\(.*?\)', '', reply_text).strip()
     # Xóa markdown link thường [text](url) mà LLM có thể chèn
     reply_text = re.sub(r'\[([^\]]*)\]\((?:https?://)?\S+\)', r'\1', reply_text).strip()
+    # Xóa các dòng mồ côi chỉ chứa dấu gạch đầu dòng, dấu chấm tròn (do strip ảnh để lại, ví dụ: '-' hoặc '*' hoặc '•')
+    reply_text = re.sub(r'(?m)^[ \t]*[-*•–—:][ \t]*$', '', reply_text)
     # Xóa dòng chỉ chứa khoảng trắng (space/tab) thành dòng trống thật
     reply_text = re.sub(r'(?m)^[ \t]+$', '', reply_text)
     # Gộp 2+ dòng trống liên tiếp thành 1 dòng trống duy nhất

@@ -98,3 +98,15 @@ def test_tim_anh_san_pham_tat_ca():
     assert "/static/products/nhom_1.jpg" in res["image_urls"]
     assert "/static/products/nhom_3.jpg" in res["image_urls"]
 
+
+def test_clean_orphan_bullet_points():
+    import re
+    raw = "Dạ em gửi bạn xem mẫu mới bên shop nha! 👕\n\n-\n-\n\nBạn xem qua mẫu nào thích thì nhắn em nhé! 💪"
+    cleaned = re.sub(r'(?m)^[ \t]*[-*•–—:][ \t]*$', '', raw)
+    cleaned = re.sub(r'(?m)^[ \t]+$', '', cleaned)
+    cleaned = re.sub(r'\n{2,}', '\n\n', cleaned).strip()
+    assert "-\n-" not in cleaned
+    assert "-" not in cleaned
+    assert cleaned == "Dạ em gửi bạn xem mẫu mới bên shop nha! 👕\n\nBạn xem qua mẫu nào thích thì nhắn em nhé! 💪"
+
+

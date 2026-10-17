@@ -274,15 +274,9 @@ async def handle_webhook(request: Request):
                                 else:
                                     await send_text_message(sender_id, reply_text)
 
-                            # Gửi ảnh đính kèm (nếu >= 2 ảnh, ưu tiên gửi Carousel cụm ảnh trượt để tránh spam khách)
-                            if len(suggested_images) > 1:
-                                carousel_ok = await send_image_carousel(sender_id, suggested_images)
-                                if not carousel_ok:
-                                    logger.info(f"[Webhook] Carousel failed, falling back to individual image messages.")
-                                    for img in suggested_images:
-                                        await send_image_message(sender_id, img)
-                            elif len(suggested_images) == 1:
-                                await send_image_message(sender_id, suggested_images[0])
+                            # Gửi ảnh đính kèm kích thước đầy đủ (để khách xem rõ nét, không bị cắt xén và phóng to được)
+                            for img in suggested_images:
+                                await send_image_message(sender_id, img)
 
                         except Exception as e:
                             logger.error(f"Error handling message for {sender_id}: {e}", exc_info=True)
