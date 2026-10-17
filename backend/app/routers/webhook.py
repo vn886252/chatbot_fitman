@@ -274,17 +274,12 @@ async def handle_webhook(request: Request):
                                 else:
                                     await send_text_message(sender_id, reply_text)
 
-                            # Gửi ảnh đính kèm:
-                            # 1. Nếu có từ 2 đến 6 ảnh: Ưu tiên gửi dạng Image Grid (cụm ảnh / album 1 bong bóng duy nhất)
-                            # 2. Nếu Image Grid không gửi được: Gửi ảnh full-size kèm cờ SILENT_PUSH để tắt tiếng chuông, không spam ting ting!
-                            if len(suggested_images) >= 2:
-                                grid_ok = await send_image_grid(sender_id, suggested_images)
-                                if not grid_ok:
-                                    logger.info(f"[Webhook] Image grid failed, falling back to full-size with SILENT_PUSH.")
-                                    for img in suggested_images:
-                                        await send_image_message(sender_id, img, notification_type="SILENT_PUSH")
-                            elif len(suggested_images) == 1:
-                                await send_image_message(sender_id, suggested_images[0], notification_type="SILENT_PUSH")
+                            # Gửi ảnh đính kèm dạng ảnh gốc (Native Photo Attachment):
+                            # - Cho phép khách chạm vào là phóng to / zoom xem chi tiết từng mã số và form áo.
+                            # - Không bị khung template xén ảnh, không có hộp xám thừa.
+                            # - Dùng cờ notification_type="SILENT_PUSH" để toàn bộ ảnh gửi âm thầm, KHÔNG phát chuông ting ting!
+                            for img in suggested_images:
+                                await send_image_message(sender_id, img, notification_type="SILENT_PUSH")
 
                         except Exception as e:
                             logger.error(f"Error handling message for {sender_id}: {e}", exc_info=True)
