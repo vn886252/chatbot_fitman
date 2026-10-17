@@ -281,6 +281,18 @@ async def generate_response(
     # Gộp 2+ dòng trống liên tiếp thành 1 dòng trống duy nhất
     reply_text = re.sub(r'\n{2,}', '\n\n', reply_text).strip()
 
+    # Tự động rút gọn câu giới thiệu mẫu dài dòng nếu LLM vô tình lặp lại
+    reply_text = re.sub(
+        r'(?i)Dạ em gửi (?:anh|chị|bạn) xem các mẫu áo (?:CBUM và Wolves|CBUM|Wolves)\s*ạ!\s*(?:Anh|Chị|Bạn) xem qua ảnh rồi ưng mẫu số mấy nhắn em nhé!\s*Đồng thời (?:anh|chị|bạn) cho em xin chiều cao và cân nặng để em tư vấn size chuẩn cho mình luôn nha!\s*[👕💪]*',
+        'Dạ em gửi anh xem mẫu ạ! Anh cho em xin chiều cao và cân nặng để em chọn size chuẩn cho mình nhé! 💪',
+        reply_text
+    )
+    reply_text = re.sub(
+        r'(?i)các mẫu áo (?:CBUM và Wolves|CBUM|Wolves)\s*ạ!?',
+        'mẫu ạ!',
+        reply_text
+    )
+
     # Bổ sung ảnh từ keyword trong câu chat (CHỈ KHI khách hỏi xem ảnh / xem mẫu)
     lower_user = user_message.lower()
 

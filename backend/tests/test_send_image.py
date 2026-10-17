@@ -139,3 +139,17 @@ def test_clean_orphan_bullet_points():
     assert cleaned == "Dạ em gửi bạn xem mẫu mới bên shop nha! 👕\n\nBạn xem qua mẫu nào thích thì nhắn em nhé! 💪"
 
 
+def test_clean_verbose_intro():
+    import re
+    verbose = "Dạ em gửi anh xem các mẫu áo CBUM và Wolves ạ! Anh xem qua ảnh rồi ưng mẫu số mấy nhắn em nhé! Đồng thời anh cho em xin chiều cao và cân nặng để em tư vấn size chuẩn cho mình luôn nha! 👕💪"
+    cleaned = re.sub(
+        r'(?i)Dạ em gửi (?:anh|chị|bạn) xem các mẫu áo (?:CBUM và Wolves|CBUM|Wolves)\s*ạ!\s*(?:Anh|Chị|Bạn) xem qua ảnh rồi ưng mẫu số mấy nhắn em nhé!\s*Đồng thời (?:anh|chị|bạn) cho em xin chiều cao và cân nặng để em tư vấn size chuẩn cho mình luôn nha!\s*[👕💪]*',
+        'Dạ em gửi anh xem mẫu ạ! Anh cho em xin chiều cao và cân nặng để em chọn size chuẩn cho mình nhé! 💪',
+        verbose
+    )
+    assert cleaned == "Dạ em gửi anh xem mẫu ạ! Anh cho em xin chiều cao và cân nặng để em chọn size chuẩn cho mình nhé! 💪"
+    assert "CBUM" not in cleaned
+    assert "Wolves" not in cleaned
+
+
+
