@@ -57,7 +57,6 @@
 html {
   scroll-behavior: smooth;
   font-size: 16px;
-  overflow-x: hidden;
 }
 
 body {
@@ -67,7 +66,7 @@ body {
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  overflow-x: hidden;
+  overflow-x: clip;
   width: 100%;
 }
 
@@ -2507,12 +2506,91 @@ button {
   flex-wrap: wrap;
 }
 
-/* Floating Messenger Button */
-.floating-messenger-btn {
+/* ===================================================================
+   FLOATING ACTION BUTTONS (CART & MESSENGER)
+   =================================================================== */
+.floating-actions-wrap {
   position: fixed;
   bottom: 24px;
   right: 24px;
-  z-index: 999;
+  z-index: 1400;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 12px;
+  pointer-events: none;
+}
+.floating-actions-wrap > * {
+  pointer-events: auto;
+}
+
+/* Floating Cart Button */
+.floating-cart-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: linear-gradient(135deg, #FF7A1A 0%, #FF9447 100%);
+  color: #FFFFFF;
+  padding: 12px 20px;
+  border-radius: var(--radius-full);
+  box-shadow: 0 10px 25px -4px rgba(255, 122, 26, 0.5), 0 4px 10px rgba(0, 0, 0, 0.1);
+  font-weight: 700;
+  font-size: 0.9rem;
+  border: none;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  text-decoration: none;
+}
+.floating-cart-btn:hover {
+  transform: translateY(-3px) scale(1.04);
+  box-shadow: 0 16px 32px -4px rgba(255, 122, 26, 0.65);
+  color: #FFFFFF;
+}
+.floating-cart-btn.has-items {
+  animation: cartPulse 2.4s infinite;
+}
+@keyframes cartPulse {
+  0%, 100% {
+    box-shadow: 0 10px 25px -4px rgba(255, 122, 26, 0.5), 0 4px 10px rgba(0, 0, 0, 0.1);
+  }
+  50% {
+    box-shadow: 0 12px 30px 2px rgba(255, 122, 26, 0.75), 0 0 0 5px rgba(255, 122, 26, 0.25);
+  }
+}
+
+.floating-cart-icon-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.floating-cart-icon-wrap svg {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+}
+.floating-cart-badge {
+  position: absolute;
+  top: -8px;
+  right: -10px;
+  background: #18181B;
+  color: #FFFFFF;
+  font-size: 0.72rem;
+  font-weight: 800;
+  min-width: 19px;
+  height: 19px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+  border: 2px solid #FFFFFF;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+/* Floating Messenger Button */
+.floating-messenger-btn {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -2526,13 +2604,11 @@ button {
   text-decoration: none;
   transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
-
 .floating-messenger-btn:hover {
   transform: translateY(-3px) scale(1.04);
   box-shadow: 0 16px 32px -4px rgba(0, 132, 255, 0.65);
   color: #FFFFFF;
 }
-
 .floating-messenger-btn svg {
   flex-shrink: 0;
   width: 22px;
@@ -2558,13 +2634,34 @@ button {
     justify-content: center;
     width: 100%;
   }
+  .floating-actions-wrap {
+    bottom: 20px;
+    right: 18px;
+    gap: 12px;
+  }
+  .floating-cart-btn span.floating-cart-text {
+    display: none;
+  }
+  .floating-cart-btn {
+    width: 52px;
+    height: 52px;
+    padding: 0;
+    justify-content: center;
+    border-radius: 50%;
+  }
+  .floating-cart-badge {
+    top: -4px;
+    right: -4px;
+  }
   .floating-messenger-btn span {
     display: none;
   }
   .floating-messenger-btn {
-    padding: 14px;
-    bottom: 20px;
-    right: 20px;
+    width: 52px;
+    height: 52px;
+    padding: 0;
+    justify-content: center;
+    border-radius: 50%;
   }
 }
 

@@ -1342,9 +1342,22 @@ function applySizeToAllItems(newSize) {
 }
 
 function updateCartBadge() {
-  const badge = document.getElementById('cartBadge');
   const totalQty = cartItems.reduce((sum, item) => sum + item.qty, 0);
+
+  const badge = document.getElementById('cartBadge');
   if (badge) badge.textContent = totalQty;
+
+  const floatingBadge = document.getElementById('floatingCartBadge');
+  if (floatingBadge) floatingBadge.textContent = totalQty;
+
+  const floatingBtn = document.getElementById('floatingCartBtn');
+  if (floatingBtn) {
+    if (totalQty > 0) {
+      floatingBtn.classList.add('has-items');
+    } else {
+      floatingBtn.classList.remove('has-items');
+    }
+  }
 }
 
 function calculateOrderTotals() {

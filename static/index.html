@@ -34,7 +34,7 @@
   <meta name="twitter:image" content="https://chatbot-fitman.onrender.com/static/brand/logo_horizontal_light.png" />
 
   <!-- Stylesheet (Cache-busting version) -->
-  <link rel="stylesheet" href="/static/css/style.css?v=3.1" />
+  <link rel="stylesheet" href="/static/css/style.css?v=3.2" />
 
   <!-- ===================================================================
        SCHEMA.ORG JSON-LD (AEO & AI SEARCH OPTIMIZATION)
@@ -1153,13 +1153,29 @@
     </div>
   </div>
 
-  <!-- Floating Messenger Button (fb.com/fitmanvnn) -->
-  <a href="https://m.me/fitmanvnn" target="_blank" rel="noopener noreferrer" class="floating-messenger-btn" aria-label="Chat Messenger với Fitman fb.com/fitmanvnn">
-    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.373 0 0 4.974 0 11.111c0 3.498 1.744 6.614 4.469 8.654V24l4.088-2.242c1.093.303 2.246.464 3.443.464 6.627 0 12-4.974 12-11.111C24 4.974 18.627 0 12 0zm1.191 14.963l-3.055-3.26-5.963 3.26 6.559-6.963 3.13 3.26 5.888-3.26-6.559 6.963z"/></svg>
-    <span>Chat Messenger</span>
-  </a>
+  <!-- Floating Action Buttons (Cart & Messenger) -->
+  <div class="floating-actions-wrap">
+    <!-- Floating Cart Button -->
+    <button id="floatingCartBtn" class="floating-cart-btn" onclick="openCart()" aria-label="Xem giỏ hàng Fitman">
+      <div class="floating-cart-icon-wrap">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="9" cy="21" r="1"></circle>
+          <circle cx="20" cy="21" r="1"></circle>
+          <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+        </svg>
+        <span id="floatingCartBadge" class="floating-cart-badge">0</span>
+      </div>
+      <span class="floating-cart-text">Giỏ Hàng</span>
+    </button>
+
+    <!-- Floating Messenger Button (fb.com/fitmanvnn) -->
+    <a href="https://m.me/fitmanvnn" target="_blank" rel="noopener noreferrer" class="floating-messenger-btn" aria-label="Chat Messenger với Fitman fb.com/fitmanvnn">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.373 0 0 4.974 0 11.111c0 3.498 1.744 6.614 4.469 8.654V24l4.088-2.242c1.093.303 2.246.464 3.443.464 6.627 0 12-4.974 12-11.111C24 4.974 18.627 0 12 0zm1.191 14.963l-3.055-3.26-5.963 3.26 6.559-6.963 3.13 3.26 5.888-3.26-6.559 6.963z"/></svg>
+      <span>Chat Messenger</span>
+    </a>
+  </div>
 
   <!-- Script (Cache-busting version) -->
-  <script src="/static/js/app.js?v=3.1"></script>
+  <script src="/static/js/app.js?v=3.2"></script>
 </body>
 </html>
