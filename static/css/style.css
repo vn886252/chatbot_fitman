@@ -745,8 +745,8 @@ button {
 .result-price-wrap {
   display: flex;
   align-items: center;
-  gap: 16px;
-  flex-wrap: wrap;
+  gap: 14px;
+  flex-wrap: nowrap;
 }
 
 .result-info strong {
