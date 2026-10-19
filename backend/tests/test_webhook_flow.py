@@ -238,12 +238,20 @@ class TestWebhookAndRoutes:
         assert data["total"] >= 50
         assert len(data["products"]) >= 50
 
-        # Test filter by category
-        res_new = client.get("/api/products?category=new")
-        assert res_new.status_code == 200
-        data_new = res_new.json()
-        assert data_new["success"] is True
-        assert all(p["category"] == "new" for p in data_new["products"])
+        # Test filter by brand category
+        res_cbum = client.get("/api/products?category=cbum")
+        assert res_cbum.status_code == 200
+        data_cbum = res_cbum.json()
+        assert data_cbum["success"] is True
+        assert len(data_cbum["products"]) > 0
+        assert all(p["category"] == "cbum" for p in data_cbum["products"])
+
+        res_raw = client.get("/api/products?category=raw")
+        assert res_raw.status_code == 200
+        data_raw = res_raw.json()
+        assert data_raw["success"] is True
+        assert len(data_raw["products"]) > 0
+        assert all(p["category"] == "raw" for p in data_raw["products"])
 
     def test_catalog_endpoint(self):
         res = client.get("/api/catalog")
