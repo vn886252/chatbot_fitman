@@ -2000,3 +2000,279 @@ button {
     padding: 20px 16px;
   }
 }
+
+/* ===================================================================
+   CUSTOMER FEEDBACK SECTION (INTERACTIVE DENSE PHOTO STREAM)
+   =================================================================== */
+.section-feedbacks {
+  background: linear-gradient(180deg, #FFFFFF 0%, #F8F8FA 100%);
+  overflow: hidden;
+  padding: 80px 0 60px;
+  position: relative;
+  border-top: 1px solid var(--border-subtle);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.feedback-stats-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 24px;
+  flex-wrap: wrap;
+}
+
+.feedback-stat-badge {
+  background: #FFFFFF;
+  border: 1px solid var(--border);
+  padding: 8px 18px;
+  border-radius: var(--radius-full);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.feedback-stat-badge .stat-num {
+  font-weight: 800;
+  color: var(--primary);
+  font-size: 0.95rem;
+}
+
+.feedback-stat-badge .stat-lbl {
+  font-size: 0.82rem;
+  color: var(--text-sub);
+  font-weight: 600;
+}
+
+/* Streams wrapper with soft lateral edge masks */
+.feedback-streams-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  margin-top: 36px;
+  position: relative;
+  -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 4%, #000 96%, transparent 100%);
+  mask-image: linear-gradient(90deg, transparent 0%, #000 4%, #000 96%, transparent 100%);
+  padding: 16px 0;
+}
+
+/* Marquee track */
+.feedback-marquee-track {
+  display: flex;
+  gap: 16px;
+  width: max-content;
+  will-change: transform;
+}
+
+.track-left {
+  animation: marqueeLeft 75s linear infinite;
+}
+
+.track-right {
+  animation: marqueeRight 70s linear infinite;
+}
+
+/* Pause animation on track hover */
+.feedback-marquee-track:hover {
+  animation-play-state: paused;
+}
+
+@keyframes marqueeLeft {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+@keyframes marqueeRight {
+  0% { transform: translateX(-50%); }
+  100% { transform: translateX(0); }
+}
+
+/* FOCUS HOVER EFFECT: Hovered item scales up large, siblings scale down */
+.feedback-marquee-track:hover .feedback-card {
+  transform: scale(0.86);
+  opacity: 0.45;
+  filter: grayscale(20%) brightness(0.92);
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+              opacity 0.35s ease,
+              filter 0.35s ease,
+              box-shadow 0.35s ease;
+}
+
+.feedback-marquee-track .feedback-card:hover {
+  transform: scale(1.36) translateY(-8px);
+  opacity: 1;
+  filter: none;
+  z-index: 50;
+  border-color: var(--primary);
+  box-shadow: 0 20px 45px -8px rgba(0, 0, 0, 0.35), 0 0 0 3px rgba(255, 122, 26, 0.4);
+}
+
+/* Individual Feedback Card */
+.feedback-card {
+  width: 175px;
+  height: 235px;
+  background: #FFFFFF;
+  border-radius: var(--radius-md);
+  border: 1.5px solid #E4E4E7;
+  overflow: hidden;
+  position: relative;
+  cursor: pointer;
+  flex-shrink: 0;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.05);
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+              opacity 0.35s ease,
+              filter 0.35s ease,
+              box-shadow 0.35s ease,
+              border-color 0.25s ease;
+}
+
+.feedback-card img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.4s ease;
+}
+
+.feedback-card:hover img {
+  transform: scale(1.06);
+}
+
+/* Subtle badge on top of feedback card */
+.feedback-card-pill {
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  right: 8px;
+  background: rgba(18, 18, 20, 0.85);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: #FFFFFF;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.7rem;
+  font-weight: 700;
+  pointer-events: none;
+}
+
+.feedback-card-pill .rating {
+  color: #FBBF24;
+}
+
+/* Fanpage banner */
+.feedback-fanpage-card {
+  background: #FFFFFF;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 28px 32px;
+  box-shadow: var(--shadow-md);
+}
+
+.fanpage-card-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 28px;
+  flex-wrap: wrap;
+}
+
+.fanpage-left {
+  max-width: 580px;
+}
+
+.fanpage-tag {
+  display: inline-block;
+  background: #EFF6FF;
+  color: #1877F2;
+  font-size: 0.75rem;
+  font-weight: 800;
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+  margin-bottom: 8px;
+  border: 1px solid rgba(24, 119, 242, 0.2);
+}
+
+.fanpage-title {
+  font-family: var(--font-heading);
+  font-size: 1.45rem;
+  font-weight: 800;
+  color: var(--dark);
+  margin-bottom: 6px;
+}
+
+.fanpage-desc {
+  font-size: 0.92rem;
+  color: var(--text-sub);
+  line-height: 1.5;
+}
+
+.fanpage-right-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+/* Floating Messenger Button */
+.floating-messenger-btn {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 999;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: linear-gradient(135deg, #0084FF 0%, #00C6FF 100%);
+  color: #FFFFFF;
+  padding: 12px 20px;
+  border-radius: var(--radius-full);
+  box-shadow: 0 10px 25px -4px rgba(0, 132, 255, 0.5), 0 4px 10px rgba(0, 0, 0, 0.1);
+  font-weight: 700;
+  font-size: 0.9rem;
+  text-decoration: none;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.floating-messenger-btn:hover {
+  transform: translateY(-3px) scale(1.04);
+  box-shadow: 0 16px 32px -4px rgba(0, 132, 255, 0.65);
+  color: #FFFFFF;
+}
+
+.floating-messenger-btn svg {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+}
+
+@media (max-width: 768px) {
+  .feedback-card {
+    width: 135px;
+    height: 185px;
+  }
+  .feedback-marquee-track:hover .feedback-card {
+    transform: scale(0.9);
+  }
+  .feedback-marquee-track .feedback-card:hover {
+    transform: scale(1.22) translateY(-4px);
+  }
+  .fanpage-card-inner {
+    flex-direction: column;
+    text-align: center;
+  }
+  .fanpage-right-actions {
+    justify-content: center;
+    width: 100%;
+  }
+  .floating-messenger-btn span {
+    display: none;
+  }
+  .floating-messenger-btn {
+    padding: 14px;
+    bottom: 20px;
+    right: 20px;
+  }
+}

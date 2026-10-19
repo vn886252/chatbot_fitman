@@ -32,6 +32,6 @@ class Settings(BaseSettings):
     BANK_ACCOUNT_NO: str = Field(default="3386111168")
     BANK_ACCOUNT_NAME: str = Field(default="HO KINH DOANH CUA HANG FITMAN")
     MOMO_PHONE: str = Field(default="0794763225")
-    MOMO_NAME: str = Field(default="HO KINH DOANH CUA HANG FITMAN")
+    MOMO_NAME: str = Field(default="TRINH BINH KHUE")
 
 settings = Settings()

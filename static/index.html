@@ -34,7 +34,7 @@
   <meta name="twitter:image" content="https://chatbot-fitman.onrender.com/static/brand/logo_horizontal_light.png" />
 
   <!-- Stylesheet (Cache-busting version) -->
-  <link rel="stylesheet" href="/static/css/style.css?v=2.5" />
+  <link rel="stylesheet" href="/static/css/style.css?v=2.6" />
 
   <!-- ===================================================================
        SCHEMA.ORG JSON-LD (AEO & AI SEARCH OPTIMIZATION)
@@ -147,11 +147,16 @@
           <li><a href="#pricing-calc" class="nav-link">Bảng Giá Combo</a></li>
           <li><a href="#size-finder" class="nav-link">Tư Vấn Size</a></li>
           <li><a href="#fabric-specs" class="nav-link">Chất Liệu 260GSM</a></li>
+          <li><a href="#feedbacks" class="nav-link">Feedback Khách</a></li>
           <li><a href="#faq" class="nav-link">Hỏi Đáp</a></li>
         </ul>
       </nav>
 
       <div class="header-actions">
+        <a href="https://m.me/fitmanvnn" target="_blank" rel="noopener noreferrer" class="btn btn-outline" style="padding: 7px 14px; font-size: 0.85rem; font-weight: 700; border-color: #E4E4E7; gap: 6px;" title="Chat tư vấn qua Messenger Fanpage fb.com/fitmanvnn">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="#0084FF"><path d="M12 0C5.373 0 0 4.974 0 11.111c0 3.498 1.744 6.614 4.469 8.654V24l4.088-2.242c1.093.303 2.246.464 3.443.464 6.627 0 12-4.974 12-11.111C24 4.974 18.627 0 12 0zm1.191 14.963l-3.055-3.26-5.963 3.26 6.559-6.963 3.13 3.26 5.888-3.26-6.559 6.963z"/></svg>
+          <span>Messenger</span>
+        </a>
         <button id="cartOpenBtn" class="cart-btn" aria-label="Xem giỏ hàng">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <circle cx="9" cy="21" r="1"></circle>
@@ -761,6 +766,76 @@
   </section>
 
   <!-- ===================================================================
+       CUSTOMER FEEDBACK & REAL FIT CHECKS (HÀNG NGHÌN HÌNH ẢNH THỰC TẾ)
+       =================================================================== -->
+  <section class="section section-feedbacks" id="feedbacks">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-subtitle">⭐ 100% ẢNH THỰC TẾ • 1.200+ ANH EM GYMER</span>
+        <h2 class="section-title">Feedback & Ảnh Khách Mặc Thực Tế</h2>
+        <p class="section-desc">
+          Hơn hàng nghìn gymer khắp cả nước đã tin tưởng chọn áo gym Fitman. Di chuột vào từng ảnh để phóng to cảm nhận chi tiết form vai ngực, hoặc bấm vào ảnh để xem toàn màn hình!
+        </p>
+
+        <!-- Social Proof Stats Badges -->
+        <div class="feedback-stats-row">
+          <div class="feedback-stat-badge">
+            <span class="stat-num">4.9 / 5.0 ⭐</span>
+            <span class="stat-lbl">1.250+ Đánh giá 5 sao</span>
+          </div>
+          <div class="feedback-stat-badge">
+            <span class="stat-num">99.4% 🔥</span>
+            <span class="stat-lbl">Hài lòng về chất vải & form</span>
+          </div>
+          <div class="feedback-stat-badge">
+            <span class="stat-num">100% 📸</span>
+            <span class="stat-lbl">Ảnh thật chụp tại phòng gym</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Infinite Stream / Multi-row Interactive Photo Wall -->
+    <div class="feedback-streams-wrapper" id="feedbackStreamsWrapper">
+      <!-- Row 1: Left drift -->
+      <div class="feedback-marquee-track track-left" id="feedbackTrack1">
+        <!-- Rendered by app.js -->
+      </div>
+      <!-- Row 2: Right drift -->
+      <div class="feedback-marquee-track track-right" id="feedbackTrack2">
+        <!-- Rendered by app.js -->
+      </div>
+      <!-- Row 3: Left drift -->
+      <div class="feedback-marquee-track track-left" id="feedbackTrack3">
+        <!-- Rendered by app.js -->
+      </div>
+    </div>
+
+    <div class="container" style="margin-top: 36px;">
+      <!-- Fanpage & Messenger Integration Banner -->
+      <div class="feedback-fanpage-card">
+        <div class="fanpage-card-inner">
+          <div class="fanpage-left">
+            <div class="fanpage-tag">👑 KẾT NỐI FANPAGE CHÍNH THỨC</div>
+            <h3 class="fanpage-title">Fitman Sportswear — fb.com/fitmanvnn</h3>
+            <p class="fanpage-desc">Giao lưu cùng cộng đồng Gymer, xem thêm hàng nghìn video review form áo và nhận tư vấn size 1-1 trực tiếp qua Messenger!</p>
+          </div>
+          <div class="fanpage-right-actions">
+            <a href="https://facebook.com/fitmanvnn" target="_blank" rel="noopener noreferrer" class="btn btn-outline" style="border-color: #D4D4D8; background: #FFF;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="#1877F2"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+              <span>Ghé Fanpage fb.com/fitmanvnn</span>
+            </a>
+            <a href="https://m.me/fitmanvnn" target="_blank" rel="noopener noreferrer" class="btn btn-primary">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.373 0 0 4.974 0 11.111c0 3.498 1.744 6.614 4.469 8.654V24l4.088-2.242c1.093.303 2.246.464 3.443.464 6.627 0 12-4.974 12-11.111C24 4.974 18.627 0 12 0zm1.191 14.963l-3.055-3.26-5.963 3.26 6.559-6.963 3.13 3.26 5.888-3.26-6.559 6.963z"/></svg>
+              <span>Chat Messenger Với Fitman</span>
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================================================================
        FAQ ACCORDION (AEO - ANSWER ENGINE OPTIMIZATION)
        =================================================================== -->
   <section class="section section-alt" id="faq">
@@ -844,11 +919,18 @@
           </ul>
         </div>
         <div class="footer-col">
-          <h4>Hỗ Trợ Khách Hàng</h4>
-          <p style="font-size: 0.9rem; margin-bottom: 12px;">Đội ngũ hỗ trợ tư vấn 24/7 trực tiếp qua Messenger & Hotline.</p>
-          <a href="https://m.me/fitmansportswear" target="_blank" class="btn btn-primary" style="padding: 8px 16px; font-size: 0.85rem;">
-            Chat Messenger Ngay
-          </a>
+          <h4>Hỗ Trợ & Kết Nối</h4>
+          <p style="font-size: 0.9rem; margin-bottom: 12px; color: #A1A1AA;">Đội ngũ Fitman tư vấn 24/7 trực tiếp qua Messenger & Fanpage chính thức.</p>
+          <div style="display: flex; flex-direction: column; gap: 8px;">
+            <a href="https://m.me/fitmanvnn" target="_blank" rel="noopener noreferrer" class="btn btn-primary" style="padding: 8px 16px; font-size: 0.85rem; justify-content: center; gap: 6px;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.373 0 0 4.974 0 11.111c0 3.498 1.744 6.614 4.469 8.654V24l4.088-2.242c1.093.303 2.246.464 3.443.464 6.627 0 12-4.974 12-11.111C24 4.974 18.627 0 12 0zm1.191 14.963l-3.055-3.26-5.963 3.26 6.559-6.963 3.13 3.26 5.888-3.26-6.559 6.963z"/></svg>
+              Chat Messenger Ngay
+            </a>
+            <a href="https://facebook.com/fitmanvnn" target="_blank" rel="noopener noreferrer" class="btn btn-outline" style="padding: 8px 16px; font-size: 0.85rem; justify-content: center; color: #FFFFFF; border-color: #3F3F46; background: #27272A; gap: 6px;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="#1877F2"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+              Fanpage: fb.com/fitmanvnn
+            </a>
+          </div>
         </div>
       </div>
       <div class="footer-bottom">
@@ -1011,7 +1093,7 @@
                   <button type="button" class="copy-pill-btn" onclick="copyText('0794763225', this)">📋 Copy SĐT</button>
                 </div>
                 <div>
-                  <span style="color: var(--text-sub);">Tên người nhận:</span> <strong>HO KINH DOANH CUA HANG FITMAN</strong>
+                  <span style="color: var(--text-sub);">Tên người nhận:</span> <strong>TRINH BINH KHUE</strong>
                 </div>
                 <div style="margin-top: 4px; font-size: 0.8rem; color: var(--text-sub);">
                   Vui lòng nhập nội dung chuyển tiền: <em>Họ tên + SĐT của bạn</em>
@@ -1104,7 +1186,13 @@
     </div>
   </div>
 
+  <!-- Floating Messenger Button (fb.com/fitmanvnn) -->
+  <a href="https://m.me/fitmanvnn" target="_blank" rel="noopener noreferrer" class="floating-messenger-btn" aria-label="Chat Messenger với Fitman fb.com/fitmanvnn">
+    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.373 0 0 4.974 0 11.111c0 3.498 1.744 6.614 4.469 8.654V24l4.088-2.242c1.093.303 2.246.464 3.443.464 6.627 0 12-4.974 12-11.111C24 4.974 18.627 0 12 0zm1.191 14.963l-3.055-3.26-5.963 3.26 6.559-6.963 3.13 3.26 5.888-3.26-6.559 6.963z"/></svg>
+    <span>Chat Messenger</span>
+  </a>
+
   <!-- Script (Cache-busting version) -->
-  <script src="/static/js/app.js?v=2.5"></script>
+  <script src="/static/js/app.js?v=2.6"></script>
 </body>
 </html>

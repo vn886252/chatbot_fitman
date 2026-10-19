@@ -10,6 +10,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initCartDrawer();
   initLightbox();
   initHeroScrollStage();
+  initFeedbackStream();
 });
 
 /* ===================================================================
@@ -1983,4 +1984,48 @@ function initHeroScrollStage() {
   window.addEventListener('scroll', onScroll, { passive: true });
   updateStage();
 }
+
+/* ===================================================================
+   CUSTOMER FEEDBACK STREAM (80 REAL FIT CHECKS)
+   =================================================================== */
+async function initFeedbackStream() {
+  const track1 = document.getElementById('feedbackTrack1');
+  const track2 = document.getElementById('feedbackTrack2');
+  const track3 = document.getElementById('feedbackTrack3');
+
+  if (!track1 || !track2 || !track3) return;
+
+  try {
+    const res = await fetch('/static/feedback/feedbacks.json');
+    const items = await res.json();
+    if (!items || !items.length) return;
+
+    // Split 80 items into 3 tracks
+    const slice1 = items.slice(0, 27);
+    const slice2 = items.slice(27, 54);
+    const slice3 = items.slice(54, 80);
+
+    function renderTrack(trackElem, list) {
+      // Duplicate list for smooth seamless infinite loop
+      const fullList = list.concat(list);
+      const html = fullList.map((item) => `
+        <div class="feedback-card" onclick="openLightbox('${item.image}', 'Feedback khách hàng Fitman')" title="Bấm vào để xem ảnh phóng to">
+          <img src="${item.image}" alt="Feedback thực tế khách hàng Fitman" loading="lazy" />
+          <div class="feedback-card-pill">
+            <span class="rating">⭐⭐⭐⭐⭐</span>
+            <span>Fitman Gymer</span>
+          </div>
+        </div>
+      `).join('');
+      trackElem.innerHTML = html;
+    }
+
+    renderTrack(track1, slice1);
+    renderTrack(track2, slice2);
+    renderTrack(track3, slice3);
+  } catch (err) {
+    console.warn('Feedback stream load error:', err);
+  }
+}
+
 
