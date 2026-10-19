@@ -2011,10 +2011,6 @@ async function initFeedbackStream() {
       const html = fullList.map((item) => `
         <div class="feedback-card" onclick="openLightbox('${item.image}', 'Feedback khách hàng Fitman')" title="Bấm vào để xem ảnh phóng to">
           <img src="${item.image}" alt="Feedback thực tế khách hàng Fitman" loading="lazy" />
-          <div class="feedback-card-pill">
-            <span class="rating">⭐⭐⭐⭐⭐</span>
-            <span>Fitman Gymer</span>
-          </div>
         </div>
       `).join('');
       trackElem.innerHTML = html;
