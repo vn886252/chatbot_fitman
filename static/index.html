@@ -310,15 +310,18 @@
 
         <div class="calc-result-box">
           <div class="result-info">
-            <span style="font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em; color: #A1A1AA;">Tổng chi phí thanh toán</span>
-            <strong id="calcResultPrice">299.000đ</strong>
+            <span class="result-label">Tổng chi phí thanh toán</span>
+            <div class="result-price-wrap">
+              <strong id="calcResultPrice">299.000đ</strong>
+              <span id="calcResultBenefit" class="result-benefit-tag">🔥 Tiết kiệm 61.000đ so với mua lẻ!</span>
+            </div>
             <p id="calcResultDesc">2 áo giá 299.000đ — MIỄN PHÍ VẬN CHUYỂN TOÀN QUỐC</p>
           </div>
-          <div style="text-align: right;">
-            <span id="calcResultBenefit" class="badge badge-orange" style="font-size: 0.85rem; padding: 6px 14px;">🔥 Tiết kiệm 61.000đ so với mua lẻ!</span>
-            <div style="margin-top: 14px;">
-              <a href="#catalog" class="btn btn-primary" style="padding: 10px 20px; font-size: 0.9rem;">Chọn Mẫu Ngay</a>
-            </div>
+          <div class="result-action">
+            <a href="#catalog" class="btn btn-primary btn-calc-cta">
+              <span>Chọn Mẫu Ngay</span>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
+            </a>
           </div>
         </div>
       </div>

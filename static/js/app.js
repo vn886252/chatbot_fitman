@@ -1055,11 +1055,11 @@ function initPricingCalculator() {
   if (!options.length) return;
 
   const PRICING_RULES = {
-    1: { price: 180000, desc: "1 áo 150.000đ + 30.000đ tiền ship COD toàn quốc", benefit: "Tip: Thêm 1 áo chỉ bù 119k là được FREESHIP ngay!" },
-    2: { price: 299000, desc: "2 áo giá 299.000đ — MIỄN PHÍ VẬN CHUYỂN TOÀN QUỐC", benefit: "🔥 Tiết kiệm 61.000đ so với mua lẻ từng áo!" },
-    3: { price: 399000, desc: "3 áo giá 399.000đ — FREESHIP (Tính ra chỉ 133k/áo)", benefit: "🔥 Siêu hời! Thêm 1 áo nữa chỉ đúng 100k!" },
-    4: { price: 520000, desc: "4 áo giá 520.000đ — FREESHIP (Đồng giá 130k/áo từ cái thứ 4)", benefit: "🔥 Giá sỉ ưu đãi: Chỉ 130.000đ/áo + Miễn phí vận chuyển!" },
-    5: { price: 650000, desc: "5 áo giá 650.000đ — FREESHIP (Đồng giá 130k/áo)", benefit: "🔥 Mặc cả tuần không lo trùng mẫu, tiết kiệm tối đa!" }
+    1: { price: 180000, desc: "1 áo 150.000đ + 30.000đ tiền ship COD toàn quốc", benefit: "💡 Thêm 1 áo để nhận ngay FREESHIP!" },
+    2: { price: 299000, desc: "2 áo giá 299.000đ — MIỄN PHÍ VẬN CHUYỂN TOÀN QUỐC", benefit: "🔥 Tiết kiệm 61.000đ so với mua lẻ!" },
+    3: { price: 399000, desc: "3 áo giá 399.000đ — MIỄN PHÍ VẬN CHUYỂN TOÀN QUỐC", benefit: "🔥 Thêm áo thứ 3 chỉ tốn đúng 100k!" },
+    4: { price: 520000, desc: "4 áo giá 520.000đ — MIỄN PHÍ VẬN CHUYỂN TOÀN QUỐC", benefit: "🔥 Đồng giá sỉ 130.000đ/áo cực hời!" },
+    5: { price: 650000, desc: "5 áo giá 650.000đ — MIỄN PHÍ VẬN CHUYỂN TOÀN QUỐC", benefit: "🔥 Mặc cả tuần không lo trùng mẫu!" }
   };
 
   options.forEach(opt => {
