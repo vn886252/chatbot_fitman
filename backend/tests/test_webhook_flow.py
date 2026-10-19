@@ -272,7 +272,7 @@ class TestWebhookAndRoutes:
                     {
                         "id": "cbum-01",
                         "name": "Áo Thun CBUM 01 Form Oversize",
-                        "size": "XXL",
+                        "size": "XL",
                         "qty": 2,
                         "price": 150000,
                         "image": "/static/products/cbum_01.jpg"
@@ -299,6 +299,6 @@ class TestWebhookAndRoutes:
             assert order["ten_khach_hang"] == "Trần Quốc Toản"
             assert order["tong_tien"] == 299000
             assert order["phuong_thuc_thanh_toan"] == "TECHCOMBANK"
-            assert any("XXL" in m for m in order["danh_sach_mon"])
+            assert any("XL" in m for m in order["danh_sach_mon"])
 
 

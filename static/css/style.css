@@ -356,38 +356,200 @@ button {
 
 .hero-visual {
   position: relative;
-}
-.hero-card {
-  position: relative;
-  border-radius: var(--radius-lg);
-  overflow: hidden;
-  box-shadow: var(--shadow-lg);
-  border: 1px solid var(--border);
-  background: #FFFFFF;
-}
-.hero-card img {
   width: 100%;
-  height: 480px;
-  object-fit: cover;
-  transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
-}
-.hero-card:hover img {
-  transform: scale(1.03);
 }
 
+/* Container for the dual-column fly-up showcase stage */
+.hero-stage-container {
+  position: relative;
+  height: 560px;
+  border-radius: var(--radius-lg);
+  background: linear-gradient(180deg, #FFFFFF 0%, #FAFAFC 100%);
+  border: 1px solid rgba(228, 228, 231, 0.9);
+  box-shadow: 0 20px 50px -12px rgba(0, 0, 0, 0.06), 0 4px 16px -2px rgba(0, 0, 0, 0.03);
+  overflow: hidden;
+  /* Smooth subtle mask at top and bottom so cards emerge and fade smoothly */
+  -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 3%, #000 95%, transparent 100%);
+  mask-image: linear-gradient(180deg, transparent 0%, #000 3%, #000 95%, transparent 100%);
+  user-select: none;
+}
+
+/* Subtle warm ambient glow behind the cards */
+.hero-stage-glow {
+  position: absolute;
+  top: -20%;
+  left: 10%;
+  right: 10%;
+  height: 80%;
+  background: radial-gradient(ellipse at center, rgba(255, 122, 26, 0.08) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Grid layout for dual columns */
+.hero-showcase-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  padding: 16px 16px 60px;
+  position: relative;
+  z-index: 1;
+}
+
+/* Individual Columns */
+.hero-showcase-col {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  will-change: transform;
+  transition: transform 0.15s ease-out;
+}
+
+/* Stagger right column lower for organic masonry cadence */
+.hero-showcase-col.col-right {
+  margin-top: 38px;
+}
+
+/* Individual Shirt Card */
+.hero-shirt-card {
+  background: #FFFFFF;
+  border-radius: var(--radius-md);
+  border: 1px solid #ECECEF;
+  box-shadow: 0 4px 18px -4px rgba(0, 0, 0, 0.05), 0 1px 3px rgba(0, 0, 0, 0.02);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  /* Fly-up state: starts lower and transparent */
+  opacity: 0;
+  transform: translateY(75px) scale(0.94);
+  transition: transform 0.65s cubic-bezier(0.16, 1, 0.3, 1),
+              opacity 0.65s ease,
+              box-shadow 0.25s ease,
+              border-color 0.25s ease;
+}
+
+/* Card becomes visible with smooth spring/fly-up */
+.hero-shirt-card.is-visible {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+.hero-shirt-card:hover {
+  transform: translateY(-4px) scale(1.02);
+  border-color: var(--primary);
+  box-shadow: 0 14px 30px -6px rgba(255, 122, 26, 0.18), 0 4px 10px rgba(0, 0, 0, 0.04);
+}
+
+/* Media (Shirt Photo) */
+.shirt-card-media {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  background: #F8F8FA;
+  overflow: hidden;
+}
+
+.shirt-card-media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.hero-shirt-card:hover .shirt-card-media img {
+  transform: scale(1.08);
+}
+
+/* Brand badge on card */
+.shirt-tag {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  background: rgba(18, 18, 20, 0.88);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  color: #FFFFFF;
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: var(--radius-full);
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+/* Card Body */
+.shirt-card-body {
+  padding: 10px 12px 12px;
+  background: #FFFFFF;
+}
+
+.shirt-name {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--dark);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 6px;
+}
+
+.shirt-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.shirt-price {
+  font-size: 0.88rem;
+  font-weight: 800;
+  color: var(--primary);
+}
+
+.shirt-quick-buy {
+  background: var(--primary-light);
+  color: var(--primary);
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+  border: 1px solid rgba(255, 122, 26, 0.2);
+  transition: all 0.2s ease;
+}
+
+.shirt-quick-buy:hover {
+  background: var(--primary);
+  color: #FFFFFF;
+  border-color: var(--primary);
+  transform: scale(1.05);
+}
+
+/* Floating badge below */
 .hero-floating-badge {
   position: absolute;
-  bottom: 24px;
-  left: 24px;
+  bottom: 14px;
+  left: 14px;
+  right: 14px;
   background: rgba(255, 255, 255, 0.94);
-  backdrop-filter: blur(12px);
-  border: 1px solid var(--border);
-  padding: 12px 18px;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(228, 228, 231, 0.9);
+  padding: 10px 14px;
   border-radius: var(--radius-md);
-  box-shadow: var(--shadow-md);
+  box-shadow: 0 12px 28px -4px rgba(0, 0, 0, 0.1);
   display: flex;
   align-items: center;
   gap: 12px;
+  z-index: 5;
+  pointer-events: none;
+  transition: opacity 0.35s ease, transform 0.35s ease;
+}
+
+.hero-stage-container.scrolled .hero-floating-badge {
+  opacity: 0;
+  transform: translateY(12px);
+  pointer-events: none;
 }
 .floating-icon {
   width: 38px;
@@ -399,14 +561,15 @@ button {
   align-items: center;
   justify-content: center;
   font-size: 1.2rem;
+  flex-shrink: 0;
 }
 .floating-text strong {
   display: block;
-  font-size: 0.95rem;
+  font-size: 0.92rem;
   color: var(--dark);
 }
 .floating-text span {
-  font-size: 0.8rem;
+  font-size: 0.78rem;
   color: var(--text-sub);
 }
 
@@ -1597,6 +1760,11 @@ button {
   .hero-trust {
     justify-content: center;
   }
+  .hero-stage-container {
+    height: 480px;
+    max-width: 520px;
+    margin: 20px auto 0;
+  }
   .size-finder-grid {
     grid-template-columns: 1fr;
   }
@@ -1622,6 +1790,26 @@ button {
   }
   .hero-title {
     font-size: 2.1rem;
+  }
+  .hero-stage-container {
+    height: 440px;
+    max-width: 100%;
+  }
+  .hero-showcase-columns {
+    gap: 10px;
+    padding: 12px 10px 48px;
+  }
+  .hero-showcase-col {
+    gap: 10px;
+  }
+  .shirt-card-body {
+    padding: 8px 10px 10px;
+  }
+  .shirt-name {
+    font-size: 0.78rem;
+  }
+  .shirt-price {
+    font-size: 0.82rem;
   }
   .calc-card {
     padding: 24px 18px;

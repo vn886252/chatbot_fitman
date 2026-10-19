@@ -9,6 +9,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initFaqAccordion();
   initCartDrawer();
   initLightbox();
+  initHeroScrollStage();
 });
 
 /* ===================================================================
@@ -1077,7 +1078,7 @@ function initPricingCalculator() {
 }
 
 /* ===================================================================
-   3. SMART SIZE FINDER (UPGRADE: XXL & CÓ BỤNG UP SIZE)
+   3. SMART SIZE FINDER (CÓ BỤNG UP SIZE • SIZE S - XL)
    =================================================================== */
 let currentRecommendedSize = 'M';
 let hasBellySelected = false;
@@ -1151,7 +1152,7 @@ function initSizeFinder() {
     let baseSize = 'M';
     let baseAdvice = '';
 
-    // Phân loại size chuẩn theo cân nặng & chiều cao (chuẩn form CBUM Oversize)
+    // Phân loại size chuẩn theo cân nặng & chiều cao (chuẩn form CBUM Oversize: S, M, L, XL)
     if (w < 62) {
       baseSize = 'S';
       baseAdvice = `Với cân nặng ${w}kg, Size S là kích thước chuẩn tôn vai xô mà vẫn rộng rãi thoải mái.`;
@@ -1161,36 +1162,36 @@ function initSizeFinder() {
     } else if (w <= 83) {
       baseSize = 'L';
       baseAdvice = `Thể hình vạm vỡ (${w}kg), Size L chuẩn form CBUM phủ mông, tay áo che bắp tay cực đẹp.`;
-    } else if (w <= 94) {
-      baseSize = 'XL';
-      baseAdvice = `Cân nặng ${w}kg mặc Size XL cực kỳ phong cách, rộng rãi đúng chuẩn streetwear thể thao.`;
     } else {
-      baseSize = 'XXL';
-      baseAdvice = `Cân nặng ${w}kg, Fitman có Size XXL siêu rộng rãi phủ mông chuẩn form gymer quốc tế.`;
+      baseSize = 'XL';
+      baseAdvice = `Cân nặng ${w}kg mặc Size XL cực kỳ phong cách, form Oversize rộng rãi đúng chuẩn streetwear thể thao.`;
     }
 
     let recommendedSize = baseSize;
     let adviceText = baseAdvice;
 
-    // Nếu chọn có bụng / bụng bia: TỰ ĐỘNG UP 1 SIZE
+    // Nếu chọn có bụng / bụng bia: TỰ ĐỘNG UP 1 SIZE (tối đa XL)
     if (hasBellySelected) {
       const sizeUpMap = {
         'S': 'M',
         'M': 'L',
         'L': 'XL',
-        'XL': 'XXL',
-        'XXL': 'XXL'
+        'XL': 'XL'
       };
-      recommendedSize = sizeUpMap[baseSize] || 'XXL';
+      recommendedSize = sizeUpMap[baseSize] || 'XL';
 
-      if (baseSize === 'XXL') {
-        adviceText = `⚡ Dáng người có bụng (${w}kg): Fitman khuyên bạn chọn Size XXL lớn nhất để vạt áo rủ suông tự nhiên, hoàn toàn che khuyết điểm vòng 2!`;
+      if (baseSize === 'XL') {
+        adviceText = `⚡ Dáng người có bụng (${w}kg): Fitman khuyên mặc Size XL - form Oversize CBUM rộng nhất với vạt áo suông rủ tự nhiên, hoàn toàn che khuyết điểm bụng!`;
       } else {
-        adviceText = `⚡ Bạn chọn "Có bụng": Fitman đã tự động UP 1 SIZE (từ Size ${baseSize} lên ${recommendedSize}) giúp form áo suông rủ, thoải mái cử động và che bụng bia hoàn hảo!`;
+        adviceText = `⚡ Bạn chọn "Có bụng": Fitman đã tự động UP 1 SIZE (từ Size ${baseSize} lên Size ${recommendedSize}) giúp form áo suông rủ, thoải mái cử động và che bụng bia hoàn hảo!`;
       }
 
       if (sizeBellyNote) {
-        sizeBellyNote.textContent = `✓ Đã tự động tăng 1 size che bụng (${baseSize} ➜ ${recommendedSize})`;
+        if (baseSize === 'XL') {
+          sizeBellyNote.textContent = 'Size XL form CBUM rộng nhất che bụng hoàn hảo';
+        } else {
+          sizeBellyNote.textContent = `✓ Đã tự động tăng 1 size che bụng (${baseSize} ➜ ${recommendedSize})`;
+        }
         sizeBellyNote.style.color = '#FF7A1A';
         sizeBellyNote.style.fontWeight = '700';
       }
@@ -1401,8 +1402,7 @@ function renderCart() {
               <option value="S" ${item.size === 'S' ? 'selected' : ''}>S (<62kg)</option>
               <option value="M" ${item.size === 'M' ? 'selected' : ''}>M (62-72kg)</option>
               <option value="L" ${item.size === 'L' ? 'selected' : ''}>L (73-83kg)</option>
-              <option value="XL" ${item.size === 'XL' ? 'selected' : ''}>XL (84-94kg)</option>
-              <option value="XXL" ${item.size === 'XXL' ? 'selected' : ''}>XXL (>94kg / Có bụng)</option>
+              <option value="XL" ${item.size === 'XL' ? 'selected' : ''}>XL (>83kg / Có bụng)</option>
             </select>
           </div>
         </div>
@@ -1900,5 +1900,87 @@ async function submitCustomOrder(event) {
       submitBtn.textContent = '✅ Tôi Đã Chuyển Khoản & Xác Nhận Đơn Hàng';
     }
   }
+}
+
+/* ===================================================================
+   HERO SCROLL-DRIVEN SHOWCASE STAGE (ALTERNATING FLY-UP)
+   =================================================================== */
+function initHeroScrollStage() {
+  const container = document.getElementById('heroStageContainer');
+  const colLeft = document.getElementById('heroColLeft');
+  const colRight = document.getElementById('heroColRight');
+  const cards = document.querySelectorAll('.hero-shirt-card');
+
+  if (!container || !colLeft || !colRight || !cards.length) return;
+
+  // Staggered initial entrance for hero presentation
+  setTimeout(() => {
+    const card1 = document.querySelector('.hero-shirt-card[data-order="1"]');
+    if (card1) card1.classList.add('is-visible');
+  }, 80);
+
+  setTimeout(() => {
+    const card2 = document.querySelector('.hero-shirt-card[data-order="2"]');
+    if (card2) card2.classList.add('is-visible');
+  }, 260);
+
+  // Progressive scroll thresholds for alternating Left -> Right reveal:
+  // Card 1: 0px (Left - CBUM 01)
+  // Card 2: 20px (Right - CBUM 02)
+  // Card 3: 65px (Left - RAW R1)
+  // Card 4: 120px (Right - YoungLA YL11)
+  // Card 5: 180px (Left - Wolves W1)
+  // Card 6: 240px (Right - RAW R6)
+  const CARD_THRESHOLDS = {
+    '1': 0,
+    '2': 20,
+    '3': 65,
+    '4': 120,
+    '5': 180,
+    '6': 240
+  };
+
+  let ticking = false;
+
+  function updateStage() {
+    const scrollY = window.scrollY || window.pageYOffset || 0;
+
+    // Toggle badge fade when visitor scrolls down
+    container.classList.toggle('scrolled', scrollY > 40);
+
+    // Dual-column parallax gliding upwards as visitor scrolls down
+    const maxLift = 260;
+    const liftL = Math.min(scrollY * 0.45, maxLift);
+    const liftR = Math.min(scrollY * 0.58, maxLift);
+
+    colLeft.style.transform = `translateY(-${liftL}px)`;
+    colRight.style.transform = `translateY(-${liftR}px)`;
+
+    // Staggered alternating fly-up trigger
+    cards.forEach(card => {
+      const order = card.getAttribute('data-order');
+      const thresh = CARD_THRESHOLDS[order] !== undefined ? CARD_THRESHOLDS[order] : 100;
+
+      if (scrollY >= thresh) {
+        card.classList.add('is-visible');
+      } else if (order !== '1' && scrollY < thresh - 15) {
+        // Tucks back down smoothly if user scrolls back to the very top
+        card.classList.remove('is-visible');
+      }
+    });
+  }
+
+  function onScroll() {
+    if (!ticking) {
+      window.requestAnimationFrame(() => {
+        updateStage();
+        ticking = false;
+      });
+      ticking = true;
+    }
+  }
+
+  window.addEventListener('scroll', onScroll, { passive: true });
+  updateStage();
 }
 
