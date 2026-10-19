@@ -70,21 +70,23 @@ def save_order(order_data: dict) -> dict:
     # Làm sạch SĐT
     clean_phone = re.sub(r'\D', '', str(order_data.get("so_dien_thoai") or "")).strip()
 
-    # Kiểm tra xem có đơn hàng trùng khớp trong ngày không
+    # Kiểm tra xem có đơn hàng trùng khớp trong ngày không (trừ khi yêu cầu force_new)
     existing_order = None
+    force_new = bool(order_data.get("force_new", False))
     sender_id = str(order_data.get("sender_id") or "").strip()
-    for o in orders:
-        if o.get("date") != date_str:
-            continue
-        # Kiểm tra sender_id nếu cả 2 đều có
-        if sender_id and o.get("sender_id") == sender_id:
-            existing_order = o
-            break
-        # Kiểm tra SĐT nếu cả 2 đều có SĐT hợp lệ
-        o_phone = re.sub(r'\D', '', o.get("so_dien_thoai", "")).strip()
-        if clean_phone and o_phone == clean_phone:
-            existing_order = o
-            break
+    if not force_new:
+        for o in orders:
+            if o.get("date") != date_str:
+                continue
+            # Kiểm tra sender_id nếu cả 2 đều có
+            if sender_id and o.get("sender_id") == sender_id:
+                existing_order = o
+                break
+            # Kiểm tra SĐT nếu cả 2 đều có SĐT hợp lệ
+            o_phone = re.sub(r'\D', '', o.get("so_dien_thoai", "")).strip()
+            if clean_phone and o_phone == clean_phone:
+                existing_order = o
+                break
 
     danh_sach_mon = order_data.get("danh_sach_mon", [])
     if isinstance(danh_sach_mon, str):
@@ -110,6 +112,12 @@ def save_order(order_data: dict) -> dict:
         existing_order["tong_tien"] = tong_tien
         existing_order["updated_at"] = now.strftime("%Y-%m-%d %H:%M:%S")
         existing_order["is_updated"] = True
+        if "phuong_thuc_thanh_toan" in order_data:
+            existing_order["phuong_thuc_thanh_toan"] = order_data["phuong_thuc_thanh_toan"]
+        if "items_detail" in order_data:
+            existing_order["items_detail"] = order_data["items_detail"]
+        if "ghi_chu" in order_data:
+            existing_order["ghi_chu"] = order_data["ghi_chu"]
 
         # Cập nhật thông tin nếu có
         if clean_name != "Khách hàng":
@@ -166,7 +174,11 @@ def save_order(order_data: dict) -> dict:
         "so_dien_thoai": str(order_data.get("so_dien_thoai") or "").strip(),
         "dia_chi": clean_addr,
         "sender_id": str(order_data.get("sender_id") or "").strip(),
-        "is_updated": False
+        "is_updated": False,
+        "phuong_thuc_thanh_toan": order_data.get("phuong_thuc_thanh_toan", "COD"),
+        "items_detail": order_data.get("items_detail", []),
+        "ghi_chu": str(order_data.get("ghi_chu") or "").strip(),
+        "trang_thai": str(order_data.get("trang_thai") or "Đã tiếp nhận")
     }
 
     orders.append(order)
@@ -297,3 +309,19 @@ def get_period_summary(period_type: str = "today") -> dict:
         "daily_breakdown": sorted_daily_breakdown,
         "orders": filtered_orders
     }
+
+
+def get_order_by_id(order_id: str) -> Optional[dict]:
+    """Tìm đơn hàng theo mã order_id để hiển thị thông tin tracking trên trang Cảm ơn."""
+    if not ORDERS_FILE.exists():
+        return None
+    try:
+        with open(ORDERS_FILE, "r", encoding="utf-8") as f:
+            orders = json.load(f)
+        target = str(order_id).strip().upper()
+        for o in orders:
+            if str(o.get("id", "")).strip().upper() == target:
+                return o
+    except Exception as e:
+        logger.error(f"Error finding order by id {order_id}: {e}")
+    return None

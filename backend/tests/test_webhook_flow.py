@@ -260,4 +260,45 @@ class TestWebhookAndRoutes:
         assert "individual_products" in data
         assert len(data["individual_products"]) >= 50
 
+    @pytest.mark.anyio
+    async def test_quick_order_and_tracking_flow(self):
+        with patch("app.services.telegram_service.send_new_order_notification", new_callable=AsyncMock) as mock_tg:
+            payload = {
+                "customer_name": "Trần Quốc Toản",
+                "customer_phone": "0912345678",
+                "shipping_address": "456 Đường CMT8, Phường 11, Quận 3, TP.HCM",
+                "payment_method": "TECHCOMBANK",
+                "items": [
+                    {
+                        "id": "cbum-01",
+                        "name": "Áo Thun CBUM 01 Form Oversize",
+                        "size": "XXL",
+                        "qty": 2,
+                        "price": 150000,
+                        "image": "/static/products/cbum_01.jpg"
+                    }
+                ],
+                "total_amount": 299000,
+                "note": "Giao giờ hành chính giúp em"
+            }
+            res = client.post("/api/quick-order", json=payload)
+            assert res.status_code == 200
+            data = res.json()
+            assert data["success"] is True
+            assert "order_id" in data
+            assert mock_tg.await_count == 1
+            order_id = data["order_id"]
+
+            # Test tracking endpoint
+            res_tracking = client.get(f"/api/order/{order_id}")
+            assert res_tracking.status_code == 200
+            track_data = res_tracking.json()
+            assert track_data["success"] is True
+            order = track_data["order"]
+            assert order["id"] == order_id
+            assert order["ten_khach_hang"] == "Trần Quốc Toản"
+            assert order["tong_tien"] == 299000
+            assert order["phuong_thuc_thanh_toan"] == "TECHCOMBANK"
+            assert any("XXL" in m for m in order["danh_sach_mon"])
+
 

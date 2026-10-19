@@ -1077,8 +1077,59 @@ function initPricingCalculator() {
 }
 
 /* ===================================================================
-   3. SMART SIZE FINDER
+   3. SMART SIZE FINDER (UPGRADE: XXL & CÓ BỤNG UP SIZE)
    =================================================================== */
+let currentRecommendedSize = 'M';
+let hasBellySelected = false;
+
+function selectBellyOption(hasBelly) {
+  hasBellySelected = Boolean(hasBelly);
+  const normalCard = document.getElementById('bellyOptNormalCard');
+  const beerCard = document.getElementById('bellyOptBeerCard');
+  const bellyText = document.getElementById('bellyStatusText');
+  const normalInput = document.getElementById('bellyOptNormal');
+  const beerInput = document.getElementById('bellyOptBeer');
+
+  if (normalCard && beerCard) {
+    if (hasBellySelected) {
+      normalCard.classList.remove('active');
+      beerCard.classList.add('active');
+      if (beerInput) beerInput.checked = true;
+      if (bellyText) bellyText.textContent = "Có bụng / Bụng bia (+1 Size)";
+    } else {
+      beerCard.classList.remove('active');
+      normalCard.classList.add('active');
+      if (normalInput) normalInput.checked = true;
+      if (bellyText) bellyText.textContent = "Bình thường / Cơ bắp";
+    }
+  }
+
+  if (typeof window.updateSizeFinderCalculation === 'function') {
+    window.updateSizeFinderCalculation();
+  }
+}
+
+function applyRecommendedSizeToShop() {
+  const btn = document.getElementById('applySizeBtn');
+  if (btn) {
+    const originalText = btn.innerHTML;
+    btn.innerHTML = `✓ Đã Chọn Size ${currentRecommendedSize}!`;
+    btn.style.background = '#10B981';
+    btn.style.borderColor = '#10B981';
+    setTimeout(() => {
+      btn.innerHTML = originalText;
+      btn.style.background = '';
+      btn.style.borderColor = '';
+    }, 2000);
+  }
+
+  // Update existing cart items if any
+  if (cartItems.length > 0) {
+    cartItems.forEach(item => { item.size = currentRecommendedSize; });
+    renderCart();
+  }
+}
+
 function initSizeFinder() {
   const heightSlider = document.getElementById('heightSlider');
   const weightSlider = document.getElementById('weightSlider');
@@ -1086,44 +1137,81 @@ function initSizeFinder() {
   const weightVal = document.getElementById('weightVal');
   const sizeOutput = document.getElementById('sizeOutput');
   const sizeAdvice = document.getElementById('sizeAdvice');
+  const sizeBellyNote = document.getElementById('sizeBellyNote');
 
   if (!heightSlider || !weightSlider) return;
 
-  function calculateSize() {
+  window.updateSizeFinderCalculation = function calculateSize() {
     const h = parseInt(heightSlider.value, 10);
     const w = parseInt(weightSlider.value, 10);
 
     if (heightVal) heightVal.textContent = `${h} cm`;
     if (weightVal) weightVal.textContent = `${w} kg`;
 
-    let recommendedSize = 'M';
-    let adviceText = '';
+    let baseSize = 'M';
+    let baseAdvice = '';
 
+    // Phân loại size chuẩn theo cân nặng & chiều cao (chuẩn form CBUM Oversize)
     if (w < 62) {
-      recommendedSize = 'S';
-      adviceText = `Với cân nặng ${w}kg, bạn mặc Size S chuẩn form Oversize thoải mái, vừa vặn vai xô.`;
+      baseSize = 'S';
+      baseAdvice = `Với cân nặng ${w}kg, Size S là kích thước chuẩn tôn vai xô mà vẫn rộng rãi thoải mái.`;
     } else if (w <= 72) {
-      recommendedSize = 'M';
-      adviceText = `Với chiều cao ${h}cm và ${w}kg, Size M là kích thước chuẩn nhất tôn cơ bắp ngực và xô.`;
+      baseSize = 'M';
+      baseAdvice = `Với chiều cao ${h}cm và ${w}kg, Size M là form chuẩn đẹp nhất tôn cơ bắp ngực và lưng.`;
     } else if (w <= 83) {
-      recommendedSize = 'L';
-      adviceText = `Thể hình vạm vỡ (${w}kg) nên mặc Size L chuẩn form CBUM phủ mông, tay áo che bắp tay đẹp mắt.`;
-    } else if (w <= 95) {
-      recommendedSize = 'XL';
-      adviceText = `Cân nặng ${w}kg mặc Size XL cực kỳ phong cách, rộng rãi đúng chuẩn streetwear thể thao.`;
+      baseSize = 'L';
+      baseAdvice = `Thể hình vạm vỡ (${w}kg), Size L chuẩn form CBUM phủ mông, tay áo che bắp tay cực đẹp.`;
+    } else if (w <= 94) {
+      baseSize = 'XL';
+      baseAdvice = `Cân nặng ${w}kg mặc Size XL cực kỳ phong cách, rộng rãi đúng chuẩn streetwear thể thao.`;
     } else {
-      recommendedSize = '2XL';
-      adviceText = `Trên 95kg, Fitman có hỗ trợ tư vấn đặt may hoặc Size 2XL siêu rộng rãi.`;
+      baseSize = 'XXL';
+      baseAdvice = `Cân nặng ${w}kg, Fitman có Size XXL siêu rộng rãi phủ mông chuẩn form gymer quốc tế.`;
     }
 
+    let recommendedSize = baseSize;
+    let adviceText = baseAdvice;
+
+    // Nếu chọn có bụng / bụng bia: TỰ ĐỘNG UP 1 SIZE
+    if (hasBellySelected) {
+      const sizeUpMap = {
+        'S': 'M',
+        'M': 'L',
+        'L': 'XL',
+        'XL': 'XXL',
+        'XXL': 'XXL'
+      };
+      recommendedSize = sizeUpMap[baseSize] || 'XXL';
+
+      if (baseSize === 'XXL') {
+        adviceText = `⚡ Dáng người có bụng (${w}kg): Fitman khuyên bạn chọn Size XXL lớn nhất để vạt áo rủ suông tự nhiên, hoàn toàn che khuyết điểm vòng 2!`;
+      } else {
+        adviceText = `⚡ Bạn chọn "Có bụng": Fitman đã tự động UP 1 SIZE (từ Size ${baseSize} lên ${recommendedSize}) giúp form áo suông rủ, thoải mái cử động và che bụng bia hoàn hảo!`;
+      }
+
+      if (sizeBellyNote) {
+        sizeBellyNote.textContent = `✓ Đã tự động tăng 1 size che bụng (${baseSize} ➜ ${recommendedSize})`;
+        sizeBellyNote.style.color = '#FF7A1A';
+        sizeBellyNote.style.fontWeight = '700';
+      }
+    } else {
+      if (sizeBellyNote) {
+        sizeBellyNote.textContent = 'Form Oversize phủ mông nhẹ, che khuyết điểm bụng và lưng';
+        sizeBellyNote.style.color = 'var(--text-sub)';
+        sizeBellyNote.style.fontWeight = 'normal';
+      }
+    }
+
+    currentRecommendedSize = recommendedSize;
     if (sizeOutput) sizeOutput.textContent = recommendedSize;
     if (sizeAdvice) sizeAdvice.textContent = adviceText;
-  }
+  };
 
-  heightSlider.addEventListener('input', calculateSize);
-  weightSlider.addEventListener('input', calculateSize);
-  calculateSize();
+  heightSlider.addEventListener('input', window.updateSizeFinderCalculation);
+  weightSlider.addEventListener('input', window.updateSizeFinderCalculation);
+  window.updateSizeFinderCalculation();
 }
+
 
 /* ===================================================================
    4. FAQ ACCORDION (AEO FRIENDLY)
@@ -1207,26 +1295,31 @@ function addToCart(productId) {
   const prod = PRODUCTS.find(p => p.id === productId);
   if (!prod) return;
 
-  const existing = cartItems.find(item => item.id === productId);
+  const chosenSize = currentRecommendedSize || 'L';
+  const existing = cartItems.find(item => item.id === productId && item.size === chosenSize);
   if (existing) {
     existing.qty += 1;
   } else {
-    cartItems.push({ ...prod, qty: 1 });
+    cartItems.push({ ...prod, qty: 1, size: chosenSize });
   }
 
   updateCartBadge();
   openCart();
 }
 
-function updateCartQty(productId, delta) {
-  const item = cartItems.find(i => i.id === productId);
-  if (!item) return;
-
-  item.qty += delta;
-  if (item.qty <= 0) {
-    cartItems = cartItems.filter(i => i.id !== productId);
+function updateCartQtyByIndex(index, delta) {
+  if (!cartItems[index]) return;
+  cartItems[index].qty += delta;
+  if (cartItems[index].qty <= 0) {
+    cartItems.splice(index, 1);
   }
   updateCartBadge();
+  renderCart();
+}
+
+function updateCartItemSize(index, newSize) {
+  if (!cartItems[index]) return;
+  cartItems[index].size = newSize;
   renderCart();
 }
 
@@ -1236,18 +1329,45 @@ function updateCartBadge() {
   if (badge) badge.textContent = totalQty;
 }
 
+function calculateOrderTotals() {
+  const totalQty = cartItems.reduce((sum, item) => sum + item.qty, 0);
+  let subtotal = 0;
+  let shippingFee = 0;
+  let grandTotal = 0;
+
+  if (totalQty === 1) {
+    subtotal = 150000;
+    shippingFee = 30000;
+    grandTotal = 180000;
+  } else if (totalQty === 2) {
+    subtotal = 299000;
+    shippingFee = 0;
+    grandTotal = 299000;
+  } else if (totalQty === 3) {
+    subtotal = 399000;
+    shippingFee = 0;
+    grandTotal = 399000;
+  } else if (totalQty >= 4) {
+    subtotal = totalQty * 130000;
+    shippingFee = 0;
+    grandTotal = subtotal;
+  }
+
+  return { totalQty, subtotal, shippingFee, grandTotal };
+}
+
 function renderCart() {
   const body = document.getElementById('cartBody');
   const totalElem = document.getElementById('cartTotal');
   const discountElem = document.getElementById('cartDiscountInfo');
   if (!body) return;
 
-  const totalQty = cartItems.reduce((sum, item) => sum + item.qty, 0);
+  const { totalQty, subtotal, shippingFee, grandTotal } = calculateOrderTotals();
 
   if (cartItems.length === 0) {
     body.innerHTML = `
-      <div class="cart-empty">
-        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#D4D4D8" stroke-width="1.5"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
+      <div class="cart-empty" style="text-align: center; padding: 40px 16px; color: #71717A;">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#D4D4D8" stroke-width="1.5" style="margin: 0 auto;"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
         <p style="margin-top: 12px; font-weight: 500;">Giỏ hàng của bạn đang trống</p>
         <a href="#catalog" onclick="closeCart()" class="btn btn-outline" style="margin-top: 16px; font-size: 0.85rem;">Khám phá mẫu ngay</a>
       </div>
@@ -1257,53 +1377,265 @@ function renderCart() {
     return;
   }
 
-  // Calculate pricing based on combo rules
-  let calculatedTotal = 0;
   let discountNote = "";
-
   if (totalQty === 1) {
-    calculatedTotal = 150000 + 30000;
     discountNote = "Phí ship 30k. Thêm 1 món nữa để được FREESHIP!";
   } else if (totalQty === 2) {
-    calculatedTotal = 299000;
     discountNote = "🎉 Bạn được FREESHIP toàn quốc! Thêm 1 món chỉ thêm 100k!";
   } else if (totalQty === 3) {
-    calculatedTotal = 399000;
     discountNote = "🎉 Bạn được FREESHIP toàn quốc! Combo 3 món siêu tiết kiệm!";
   } else if (totalQty >= 4) {
-    calculatedTotal = totalQty * 130000;
     discountNote = `🎉 Đồng giá sỉ ${formatMoney(130000)}/món + FREESHIP toàn quốc!`;
   }
 
-  body.innerHTML = cartItems.map(item => `
+  body.innerHTML = cartItems.map((item, idx) => `
     <div style="display: flex; gap: 12px; padding-bottom: 12px; border-bottom: 1px solid #F4F4F5; align-items: center;">
-      <img src="${item.image}" alt="${item.name}" style="width: 60px; height: 60px; object-fit: cover; border-radius: 8px;" />
-      <div style="flex-grow: 1;">
-        <h4 style="font-size: 0.9rem; font-weight: 700; color: #18181B; margin-bottom: 2px;">${item.name}</h4>
-        <span style="font-size: 0.82rem; color: #FF7A1A; font-weight: 700;">150.000đ</span>
+      <img src="${item.image}" alt="${item.name}" style="width: 58px; height: 58px; object-fit: cover; border-radius: 8px; flex-shrink: 0;" />
+      <div style="flex-grow: 1; min-width: 0;">
+        <h4 style="font-size: 0.86rem; font-weight: 700; color: #18181B; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${item.name}</h4>
+        <div style="display: flex; align-items: center; gap: 8px; margin-top: 4px;">
+          <span style="font-size: 0.82rem; color: #FF7A1A; font-weight: 700;">150.000đ</span>
+          <div style="display: inline-flex; align-items: center; gap: 4px;">
+            <label style="font-size: 0.72rem; color: #71717A;">Size:</label>
+            <select onchange="updateCartItemSize(${idx}, this.value)" style="padding: 2px 6px; border: 1px solid #D4D4D8; border-radius: 4px; font-size: 0.75rem; font-weight: 700; background: #FFF; cursor: pointer; color: #18181B;">
+              <option value="S" ${item.size === 'S' ? 'selected' : ''}>S (<62kg)</option>
+              <option value="M" ${item.size === 'M' ? 'selected' : ''}>M (62-72kg)</option>
+              <option value="L" ${item.size === 'L' ? 'selected' : ''}>L (73-83kg)</option>
+              <option value="XL" ${item.size === 'XL' ? 'selected' : ''}>XL (84-94kg)</option>
+              <option value="XXL" ${item.size === 'XXL' ? 'selected' : ''}>XXL (>94kg / Có bụng)</option>
+            </select>
+          </div>
+        </div>
       </div>
-      <div style="display: flex; align-items: center; gap: 6px;">
-        <button onclick="updateCartQty('${item.id}', -1)" style="width: 26px; height: 26px; background: #F4F4F5; border-radius: 4px; font-weight: bold;">-</button>
-        <span style="font-weight: 600; font-size: 0.9rem; min-width: 18px; text-align: center;">${item.qty}</span>
-        <button onclick="updateCartQty('${item.id}', 1)" style="width: 26px; height: 26px; background: #F4F4F5; border-radius: 4px; font-weight: bold;">+</button>
+      <div style="display: flex; align-items: center; gap: 6px; flex-shrink: 0;">
+        <button onclick="updateCartQtyByIndex(${idx}, -1)" style="width: 24px; height: 24px; background: #F4F4F5; border-radius: 4px; font-weight: bold; cursor: pointer; border: none;">-</button>
+        <span style="font-weight: 600; font-size: 0.88rem; min-width: 16px; text-align: center;">${item.qty}</span>
+        <button onclick="updateCartQtyByIndex(${idx}, 1)" style="width: 24px; height: 24px; background: #F4F4F5; border-radius: 4px; font-weight: bold; cursor: pointer; border: none;">+</button>
       </div>
     </div>
   `).join('');
 
-  if (totalElem) totalElem.textContent = formatMoney(calculatedTotal);
+  if (totalElem) totalElem.textContent = formatMoney(grandTotal);
   if (discountElem) discountElem.textContent = discountNote;
 }
 
 function formatMoney(amount) {
-  return amount.toLocaleString('vi-VN') + 'đ';
+  return Number(amount || 0).toLocaleString('vi-VN') + 'đ';
 }
 
 function proceedToCheckout() {
-  if (cartItems.length === 0) return;
-  const summary = cartItems.map(i => `${i.qty}x ${i.name}`).join(', ');
-  const fbUrl = `https://m.me/fitmansportswear?text=${encodeURIComponent('Chào Fitman, mình muốn đặt các món sau: ' + summary)}`;
-  window.open(fbUrl, '_blank');
+  openQuickOrderModal();
 }
+
+/* ===================================================================
+   FAST CHECKOUT MODAL HANDLERS
+   =================================================================== */
+let currentPaymentMethod = 'COD';
+
+function selectPaymentMethod(method) {
+  currentPaymentMethod = method;
+
+  const tabs = {
+    'COD': document.getElementById('payTabCod'),
+    'TECHCOMBANK': document.getElementById('payTabTechcom'),
+    'MOMO': document.getElementById('payTabMomo')
+  };
+  const details = {
+    'COD': document.getElementById('payDetailsCod'),
+    'TECHCOMBANK': document.getElementById('payDetailsTechcom'),
+    'MOMO': document.getElementById('payDetailsMomo')
+  };
+
+  Object.keys(tabs).forEach(k => {
+    if (tabs[k]) {
+      if (k === method) tabs[k].classList.add('active');
+      else tabs[k].classList.remove('active');
+    }
+  });
+
+  Object.keys(details).forEach(k => {
+    if (details[k]) {
+      details[k].style.display = (k === method) ? 'block' : 'none';
+    }
+  });
+}
+
+function openQuickOrderModal() {
+  if (cartItems.length === 0) {
+    alert("Giỏ hàng của bạn đang trống! Vui lòng chọn ít nhất 1 sản phẩm để đặt hàng.");
+    return;
+  }
+  closeCart();
+
+  const { totalQty, subtotal, shippingFee, grandTotal } = calculateOrderTotals();
+
+  // Populate items list
+  const listElem = document.getElementById('quickOrderItemsList');
+  if (listElem) {
+    listElem.innerHTML = cartItems.map(item => `
+      <div style="display: flex; gap: 10px; align-items: center; background: #FFFFFF; padding: 8px 12px; border-radius: 6px; border: 1px solid #E4E4E7;">
+        <img src="${item.image}" alt="${item.name}" style="width: 44px; height: 44px; object-fit: cover; border-radius: 6px; flex-shrink: 0;" />
+        <div style="flex-grow: 1; min-width: 0;">
+          <div style="font-size: 0.85rem; font-weight: 700; color: #18181B; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${item.name}</div>
+          <div style="font-size: 0.75rem; color: #71717A;">
+            Size: <strong style="color: #FF7A1A;">${item.size || 'L'}</strong> • Số lượng: <strong>x${item.qty}</strong>
+          </div>
+        </div>
+        <strong style="font-size: 0.88rem; color: #18181B; flex-shrink: 0;">${formatMoney(150000 * item.qty)}</strong>
+      </div>
+    `).join('');
+  }
+
+  // Populate summary
+  const qtyElem = document.getElementById('quickOrderQty');
+  const subtotalElem = document.getElementById('quickOrderSubtotal');
+  const shippingElem = document.getElementById('quickOrderShipping');
+  const grandTotalElem = document.getElementById('quickOrderGrandTotal');
+  const tcbAmountElem = document.getElementById('tcbAmountText');
+  const qrImgElem = document.getElementById('quickOrderVietqrImg');
+
+  if (qtyElem) qtyElem.textContent = totalQty;
+  if (subtotalElem) subtotalElem.textContent = formatMoney(subtotal);
+  if (shippingElem) {
+    shippingElem.textContent = shippingFee === 0 ? "0đ (Freeship toàn quốc)" : "30.000đ";
+    shippingElem.style.color = shippingFee === 0 ? "#10B981" : "#18181B";
+  }
+  if (grandTotalElem) grandTotalElem.textContent = formatMoney(grandTotal);
+
+  if (tcbAmountElem) {
+    tcbAmountElem.textContent = formatMoney(grandTotal);
+    tcbAmountElem.setAttribute('data-raw', grandTotal);
+  }
+
+  // Update Techcombank QR code
+  if (qrImgElem) {
+    const qrUrl = `https://img.vietqr.io/image/TCB-3386111168-compact2.png?amount=${grandTotal}&addInfo=FITMAN%20ORDER&accountName=HO%20KINH%20DOANH%20CUA%20HANG%20FITMAN`;
+    qrImgElem.src = qrUrl;
+  }
+
+  selectPaymentMethod('COD');
+
+  const modal = document.getElementById('quickOrderModal');
+  if (modal) {
+    modal.classList.add('active');
+    document.body.style.overflow = 'hidden';
+  }
+}
+
+function closeQuickOrderModal() {
+  const modal = document.getElementById('quickOrderModal');
+  if (modal) {
+    modal.classList.remove('active');
+    document.body.style.overflow = '';
+  }
+}
+
+function copyText(text, btnElem) {
+  if (!text) return;
+  navigator.clipboard.writeText(text).then(() => {
+    if (btnElem) {
+      const orig = btnElem.textContent;
+      btnElem.textContent = "✓ Đã chép!";
+      setTimeout(() => { btnElem.textContent = orig; }, 1800);
+    }
+  }).catch(() => {
+    alert(`Đã sao chép: ${text}`);
+  });
+}
+
+async function submitQuickOrder(event) {
+  event.preventDefault();
+
+  if (cartItems.length === 0) {
+    alert("Giỏ hàng của bạn đang trống!");
+    return;
+  }
+
+  const nameInput = document.getElementById('quickOrderName');
+  const phoneInput = document.getElementById('quickOrderPhone');
+  const addressInput = document.getElementById('quickOrderAddress');
+  const noteInput = document.getElementById('quickOrderNote');
+  const submitBtn = document.getElementById('quickOrderSubmitBtn');
+  const statusMsg = document.getElementById('quickOrderStatusMessage');
+
+  const customerName = nameInput ? nameInput.value.trim() : '';
+  const customerPhone = phoneInput ? phoneInput.value.trim() : '';
+  const shippingAddress = addressInput ? addressInput.value.trim() : '';
+  const note = noteInput ? noteInput.value.trim() : '';
+
+  if (!customerName || !customerPhone || !shippingAddress) {
+    alert("Vui lòng điền đầy đủ Họ tên, Số điện thoại và Địa chỉ giao hàng!");
+    return;
+  }
+
+  const { grandTotal } = calculateOrderTotals();
+
+  const payload = {
+    customer_name: customerName,
+    customer_phone: customerPhone,
+    shipping_address: shippingAddress,
+    payment_method: currentPaymentMethod,
+    items: cartItems.map(i => ({
+      id: i.id,
+      name: i.name,
+      size: i.size || 'L',
+      qty: i.qty,
+      price: 150000,
+      image: i.image
+    })),
+    total_amount: grandTotal,
+    note: note
+  };
+
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = "⏳ Đang tạo đơn hàng...";
+  }
+
+  try {
+    const res = await fetch('/api/quick-order', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+
+    if (data.success && data.order_id) {
+      // Clear cart
+      cartItems = [];
+      updateCartBadge();
+      renderCart();
+      closeQuickOrderModal();
+
+      // Redirect immediately to Thank You & Tracking page
+      window.location.href = `/thank-you.html?order_id=${encodeURIComponent(data.order_id)}`;
+    } else {
+      if (statusMsg) {
+        statusMsg.style.display = 'block';
+        statusMsg.style.background = '#FEE2E2';
+        statusMsg.style.color = '#B91C1C';
+        statusMsg.textContent = data.error || "Đặt hàng thất bại. Vui lòng kiểm tra lại thông tin!";
+      }
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = "🚀 XÁC NHẬN ĐẶT HÀNG NGAY";
+      }
+    }
+  } catch (err) {
+    console.error("Error submitting quick order:", err);
+    if (statusMsg) {
+      statusMsg.style.display = 'block';
+      statusMsg.style.background = '#FEE2E2';
+      statusMsg.style.color = '#B91C1C';
+      statusMsg.textContent = "Không thể kết nối máy chủ. Vui lòng kiểm tra mạng hoặc thử lại!";
+    }
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = "🚀 XÁC NHẬN ĐẶT HÀNG NGAY";
+    }
+  }
+}
+
 
 /* ===================================================================
    7. CUSTOM DESIGN STUDIO LOGIC

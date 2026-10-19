@@ -1,6 +1,13 @@
 {
   "global_paused": false,
-  "global_pause_time": 1791952663.769591,
-  "last_customer_id": "user_psid_error_suppress",
-  "customers": {}
+  "global_pause_time": 1792426614.3914502,
+  "last_customer_id": "fb_customer_103",
+  "customers": {
+    "fb_customer_103": {
+      "paused": true,
+      "last_activity": 1792426615.841973,
+      "reason": "human_chatting",
+      "human_notified": true
+    }
+  }
 }

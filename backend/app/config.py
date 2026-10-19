@@ -28,8 +28,10 @@ class Settings(BaseSettings):
     TELEGRAM_CHAT_ID: str = Field(default="")
     HANDOVER_TIMEOUT_HOURS: int = Field(default=2)
     DAILY_REPORT_HOUR: int = Field(default=22)
-    BANK_BIN: str = Field(default="MB")
-    BANK_ACCOUNT_NO: str = Field(default="0901234567")
-    BANK_ACCOUNT_NAME: str = Field(default="FITMAN SPORTSWEAR")
+    BANK_BIN: str = Field(default="TCB")
+    BANK_ACCOUNT_NO: str = Field(default="3386111168")
+    BANK_ACCOUNT_NAME: str = Field(default="HO KINH DOANH CUA HANG FITMAN")
+    MOMO_PHONE: str = Field(default="0794763225")
+    MOMO_NAME: str = Field(default="HO KINH DOANH CUA HANG FITMAN")
 
 settings = Settings()

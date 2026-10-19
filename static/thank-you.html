@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Đặt Hàng Thành Công & Theo Dõi Đơn Hàng | Fitman Sportswear</title>
+  <meta name="description" content="Trang theo dõi trạng thái đơn hàng và hướng dẫn thanh toán Fitman Sportswear." />
+  <link rel="icon" type="image/png" href="/static/brand/logo_icon.png" />
+
+  <!-- Google Fonts: Outfit & Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700;800;900&display=swap" rel="stylesheet" />
+
+  <link rel="stylesheet" href="/static/css/style.css?v=2.3" />
+  <style>
+    .tracking-page {
+      background: #F8F8FA;
+      min-height: 100vh;
+      padding: 30px 16px 60px;
+    }
+    .tracking-container {
+      max-width: 760px;
+      margin: 0 auto;
+    }
+    .tracking-card {
+      background: #FFFFFF;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 32px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+      margin-bottom: 24px;
+    }
+    .order-success-hero {
+      text-align: center;
+      padding-bottom: 24px;
+      border-bottom: 1px solid #F4F4F5;
+      margin-bottom: 28px;
+    }
+    .success-icon-wrap {
+      width: 72px;
+      height: 72px;
+      background: #DCFCE7;
+      color: #10B981;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2.2rem;
+      margin: 0 auto 16px;
+      box-shadow: 0 0 0 8px #F0FDF4;
+    }
+    .order-id-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: #FFF9F5;
+      border: 1.5px solid var(--primary);
+      color: var(--primary);
+      padding: 6px 14px;
+      border-radius: 30px;
+      font-family: var(--font-heading);
+      font-weight: 800;
+      font-size: 1.1rem;
+      margin: 12px 0;
+    }
+    /* Tracking Timeline */
+    .tracking-timeline {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      position: relative;
+      margin: 30px 0 20px;
+      gap: 8px;
+    }
+    .timeline-step {
+      text-align: center;
+      position: relative;
+      z-index: 2;
+    }
+    .timeline-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: #F4F4F5;
+      color: #A1A1AA;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2rem;
+      margin: 0 auto 10px;
+      border: 2px solid #E4E4E7;
+      transition: all 0.3s;
+    }
+    .timeline-step.completed .timeline-icon {
+      background: #10B981;
+      color: #FFFFFF;
+      border-color: #10B981;
+      box-shadow: 0 0 0 4px #DCFCE7;
+    }
+    .timeline-step.active .timeline-icon {
+      background: var(--primary);
+      color: #FFFFFF;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 4px #FFE8D6;
+    }
+    .timeline-title {
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: var(--dark);
+      margin-bottom: 2px;
+    }
+    .timeline-desc {
+      font-size: 0.72rem;
+      color: var(--text-sub);
+    }
+    .timeline-bar {
+      position: absolute;
+      top: 22px;
+      left: 12%;
+      right: 12%;
+      height: 3px;
+      background: #E4E4E7;
+      z-index: 1;
+    }
+    .timeline-bar-progress {
+      position: absolute;
+      top: 0;
+      left: 0;
+      height: 100%;
+      background: #10B981;
+      width: 25%;
+    }
+    /* Info Box */
+    .tracking-info-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-bottom: 24px;
+    }
+    .info-card {
+      background: #FAFAFA;
+      border: 1px solid #E4E4E7;
+      border-radius: var(--radius-md);
+      padding: 18px;
+    }
+    .info-card h4 {
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: var(--dark);
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .info-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.85rem;
+      margin-bottom: 8px;
+      color: var(--text-sub);
+    }
+    .info-row strong {
+      color: var(--dark);
+      text-align: right;
+    }
+    .item-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 0;
+      border-bottom: 1px solid #F4F4F5;
+    }
+    .item-row:last-child {
+      border-bottom: none;
+    }
+    .item-thumb {
+      width: 52px;
+      height: 52px;
+      border-radius: 6px;
+      object-fit: cover;
+      border: 1px solid #E4E4E7;
+    }
+    @media (max-width: 640px) {
+      .tracking-card {
+        padding: 22px 16px;
+      }
+      .tracking-timeline {
+        grid-template-columns: 1fr;
+        gap: 16px;
+        text-align: left;
+      }
+      .timeline-bar {
+        display: none;
+      }
+      .timeline-step {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        text-align: left;
+      }
+      .timeline-icon {
+        margin: 0;
+        flex-shrink: 0;
+      }
+      .tracking-info-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body class="tracking-page">
+
+  <!-- Header -->
+  <header style="max-width: 760px; margin: 0 auto 24px; display: flex; justify-content: space-between; align-items: center;">
+    <a href="/" style="display: flex; align-items: center; gap: 8px; text-decoration: none;">
+      <img src="/static/brand/logo_icon.png" alt="Fitman Logo" style="height: 38px;" />
+      <span style="font-family: var(--font-heading); font-size: 1.3rem; font-weight: 900; color: var(--dark); letter-spacing: 0.5px;">FITMAN<span style="color: var(--primary);">.VN</span></span>
+    </a>
+    <a href="tel:0794763225" style="display: inline-flex; align-items: center; gap: 6px; font-size: 0.85rem; font-weight: 700; color: var(--primary); text-decoration: none; background: #FFF; padding: 6px 14px; border-radius: 30px; border: 1px solid #E4E4E7;">
+      📞 Hotline: 0794 763 225
+    </a>
+  </header>
+
+  <main class="tracking-container">
+
+    <!-- Loading State -->
+    <div id="loadingState" class="tracking-card" style="text-align: center; padding: 48px 20px;">
+      <div style="font-size: 2rem; margin-bottom: 12px;">⏳</div>
+      <h3 style="font-size: 1.2rem; color: var(--dark); margin-bottom: 6px;">Đang tải thông tin đơn hàng...</h3>
+      <p style="font-size: 0.88rem; color: var(--text-sub);">Hệ thống đang truy xuất dữ liệu từ Fitman Sportswear</p>
+    </div>
+
+    <!-- Error State -->
+    <div id="errorState" class="tracking-card" style="display: none; text-align: center; padding: 48px 20px;">
+      <div style="font-size: 2.2rem; margin-bottom: 12px;">🔍</div>
+      <h3 style="font-size: 1.2rem; color: var(--dark); margin-bottom: 6px;">Không tìm thấy mã đơn hàng!</h3>
+      <p style="font-size: 0.88rem; color: var(--text-sub); margin-bottom: 20px;">Vui lòng kiểm tra lại mã đơn hoặc nhập mã tra cứu dưới đây:</p>
+      
+      <div style="display: flex; gap: 8px; max-width: 400px; margin: 0 auto;">
+        <input type="text" id="manualOrderIdInput" class="form-input" placeholder="Ví dụ: ORD-261019-001" style="text-transform: uppercase;" />
+        <button class="btn btn-primary" onclick="lookupManualOrder()" style="padding: 0 20px; white-space: nowrap;">Tra Cứu</button>
+      </div>
+
+      <div style="margin-top: 24px;">
+        <a href="/" class="btn btn-outline" style="font-size: 0.85rem;">Quay Lại Trang Chủ</a>
+      </div>
+    </div>
+
+    <!-- Order Content -->
+    <div id="orderContent" style="display: none;">
+      
+      <!-- Card 1: Success Hero & Timeline -->
+      <div class="tracking-card">
+        <div class="order-success-hero">
+          <div class="success-icon-wrap">✓</div>
+          <span class="badge badge-orange" style="margin-bottom: 8px;">ĐÃ GHI NHẬN ĐƠN HÀNG THÀNH CÔNG</span>
+          <h1 style="font-family: var(--font-heading); font-size: 1.7rem; font-weight: 800; color: var(--dark); margin-bottom: 6px;">
+            Cảm Ơn Bạn Đã Đồng Hành Cùng Fitman!
+          </h1>
+          <p style="font-size: 0.9rem; color: var(--text-sub);">
+            Đơn hàng của bạn đã được chuyển đến bộ phận đóng gói. Chúng tôi sẽ chuẩn bị và giao hàng trong thời gian sớm nhất.
+          </p>
+
+          <div>
+            <div class="order-id-badge">
+              <span id="orderIdDisplay">#ORD-000000-000</span>
+              <button type="button" class="copy-pill-btn" onclick="copyOrderId()">📋 Sao chép</button>
+            </div>
+            <div style="font-size: 0.8rem; color: #71717A;">
+              Thời gian đặt: <strong id="orderTimeDisplay">--</strong>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tracking Timeline -->
+        <h3 style="font-size: 1.05rem; font-weight: 700; color: var(--dark); margin-bottom: 14px; text-align: center;">
+          Tiến Trình Đơn Hàng Của Bạn
+        </h3>
+
+        <div class="tracking-timeline">
+          <div class="timeline-bar">
+            <div class="timeline-bar-progress" id="timelineProgressBar"></div>
+          </div>
+
+          <div class="timeline-step completed" id="step1">
+            <div class="timeline-icon">✓</div>
+            <div class="timeline-title">Tiếp Nhận Đơn</div>
+            <div class="timeline-desc">Đã lưu hệ thống</div>
+          </div>
+
+          <div class="timeline-step active" id="step2">
+            <div class="timeline-icon">📦</div>
+            <div class="timeline-title">Đóng Gói</div>
+            <div class="timeline-desc">Kiểm tra size & mẫu</div>
+          </div>
+
+          <div class="timeline-step" id="step3">
+            <div class="timeline-icon">🚚</div>
+            <div class="timeline-title">Đang Giao Hàng</div>
+            <div class="timeline-desc">GHTK / Viettel Post</div>
+          </div>
+
+          <div class="timeline-step" id="step4">
+            <div class="timeline-icon">🎁</div>
+            <div class="timeline-title">Hoàn Thành</div>
+            <div class="timeline-desc">Đồng kiểm khi nhận</div>
+          </div>
+        </div>
+
+        <div style="background: #FFF9F5; border: 1px dashed var(--primary); border-radius: var(--radius-sm); padding: 12px 16px; font-size: 0.85rem; color: var(--dark); text-align: center; margin-top: 24px;">
+          ⚡ <strong>Thời gian dự kiến nhận hàng:</strong> Từ 2 - 3 ngày làm việc (Nội thành HCM có thể nhận sớm hơn). Quý khách được quyền kiểm tra hàng trước khi thanh toán!
+        </div>
+      </div>
+
+      <!-- Card 2: Payment Instructions Box (VietQR / Techcombank / MoMo / COD) -->
+      <div class="tracking-card" id="paymentInstructionsCard">
+        <h3 style="font-size: 1.1rem; font-weight: 800; color: var(--dark); margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+          💳 Hướng Dẫn Thanh Toán Đơn Hàng
+        </h3>
+
+        <!-- Techcombank Box -->
+        <div id="paymentBoxTechcom" style="display: none;">
+          <div style="background: #F8F8FA; border: 1px solid #E4E4E7; border-radius: var(--radius-md); padding: 20px;">
+            <div style="display: grid; grid-template-columns: 160px 1fr; gap: 20px; align-items: center;">
+              <div style="background: #FFFFFF; padding: 10px; border-radius: 8px; border: 1px solid #E4E4E7; text-align: center;">
+                <img id="trackingVietqrImg" src="" alt="Mã VietQR Techcombank" style="width: 100%; display: block; border-radius: 4px;" />
+                <span style="font-size: 0.72rem; color: var(--text-sub); margin-top: 6px; display: block;">Quét bằng mọi App Ngân Hàng</span>
+              </div>
+              <div style="font-size: 0.9rem;">
+                <div style="margin-bottom: 8px;">
+                  <span style="color: var(--text-sub);">Ngân hàng:</span> <strong>Techcombank</strong>
+                </div>
+                <div style="margin-bottom: 8px; display: flex; align-items: center; gap: 8px;">
+                  <span style="color: var(--text-sub);">Số tài khoản:</span>
+                  <strong style="color: var(--primary); font-size: 1.15rem;">3386111168</strong>
+                  <button type="button" class="copy-pill-btn" onclick="copyText('3386111168', this)">📋 Copy</button>
+                </div>
+                <div style="margin-bottom: 8px;">
+                  <span style="color: var(--text-sub);">Chủ tài khoản:</span>
+                  <strong>HO KINH DOANH CUA HANG FITMAN</strong>
+                </div>
+                <div style="margin-bottom: 8px; display: flex; align-items: center; gap: 8px;">
+                  <span style="color: var(--text-sub);">Số tiền:</span>
+                  <strong id="trackingAmountTcb" style="color: var(--primary); font-size: 1.1rem;">0đ</strong>
+                  <button type="button" class="copy-pill-btn" onclick="copyText(document.getElementById('trackingAmountTcb').getAttribute('data-raw'), this)">📋 Copy</button>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <span style="color: var(--text-sub);">Nội dung CK:</span>
+                  <strong id="trackingMemoTcb" style="color: #10B981; font-weight: 700;">FITMAN ORD</strong>
+                  <button type="button" class="copy-pill-btn" onclick="copyText(document.getElementById('trackingMemoTcb').textContent, this)">📋 Copy</button>
+                </div>
+              </div>
+            </div>
+            <p style="font-size: 0.8rem; color: var(--text-sub); margin: 14px 0 0; border-top: 1px dashed #E4E4E7; padding-top: 10px;">
+              💡 <em>Đơn hàng chuyển khoản sẽ được ưu tiên xuất kho và giao cho bưu tá sớm nhất ngay khi hệ thống nhận được thông báo biến động số dư.</em>
+            </p>
+          </div>
+        </div>
+
+        <!-- MoMo Box -->
+        <div id="paymentBoxMomo" style="display: none;">
+          <div style="background: #FDF2F8; border: 1px solid #FBCFE8; border-radius: var(--radius-md); padding: 20px;">
+            <div style="display: flex; gap: 16px; align-items: center;">
+              <div style="width: 56px; height: 56px; background: #A50064; color: #FFF; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.6rem; font-weight: 800; flex-shrink: 0;">
+                M
+              </div>
+              <div style="font-size: 0.9rem;">
+                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+                  <span style="color: var(--text-sub);">Ví MoMo:</span>
+                  <strong style="color: #A50064; font-size: 1.2rem;">0794763225</strong>
+                  <button type="button" class="copy-pill-btn" onclick="copyText('0794763225', this)">📋 Copy SĐT</button>
+                </div>
+                <div style="margin-bottom: 6px;">
+                  <span style="color: var(--text-sub);">Chủ ví:</span>
+                  <strong>HO KINH DOANH CUA HANG FITMAN</strong>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <span style="color: var(--text-sub);">Số tiền:</span>
+                  <strong id="trackingAmountMomo" style="color: #A50064; font-size: 1.1rem;">0đ</strong>
+                </div>
+                <div style="font-size: 0.82rem; color: var(--text-sub); margin-top: 6px;">
+                  Nội dung chuyển tiền: <strong id="trackingMemoMomo">FITMAN ORD</strong>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- COD Box -->
+        <div id="paymentBoxCod" style="display: none;">
+          <div style="background: #F0FDF4; border: 1px solid #BBF7D0; border-radius: var(--radius-md); padding: 18px; display: flex; gap: 14px; align-items: center;">
+            <div style="font-size: 2rem;">💵</div>
+            <div>
+              <strong style="color: #166534; font-size: 0.95rem;">Thanh Toán Tiền Mặt Khi Nhận Hàng (COD)</strong>
+              <p style="font-size: 0.85rem; color: #15803D; margin: 4px 0 0;">
+                Shipper sẽ thu tổng tiền mặt <strong id="trackingAmountCod" style="font-size: 1.05rem;">0đ</strong> khi giao hàng tận nơi. Quý khách vui lòng chuẩn bị sẵn tiền mặt và kiểm tra hàng trước khi nhận!
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card 3: Customer Details & Items Summary -->
+      <div class="tracking-card">
+        <div class="tracking-info-grid">
+          
+          <!-- Receiver info -->
+          <div class="info-card">
+            <h4>👤 Thông Tin Người Nhận</h4>
+            <div class="info-row">
+              <span>Họ và tên:</span>
+              <strong id="trackingCustName">--</strong>
+            </div>
+            <div class="info-row">
+              <span>Số điện thoại:</span>
+              <strong id="trackingCustPhone">--</strong>
+            </div>
+            <div class="info-row">
+              <span>Địa chỉ nhận:</span>
+              <strong id="trackingCustAddress" style="max-width: 60%; word-break: break-word;">--</strong>
+            </div>
+            <div class="info-row">
+              <span>Ghi chú đơn:</span>
+              <strong id="trackingCustNote">Không có</strong>
+            </div>
+          </div>
+
+          <!-- Order summary -->
+          <div class="info-card">
+            <h4>📋 Tóm Tắt Thanh Toán</h4>
+            <div class="info-row">
+              <span>Hình thức:</span>
+              <strong id="trackingPaymentMethodName">COD</strong>
+            </div>
+            <div class="info-row">
+              <span>Tổng số lượng:</span>
+              <strong id="trackingTotalQty">0 món</strong>
+            </div>
+            <div class="info-row">
+              <span>Phí vận chuyển:</span>
+              <strong id="trackingShippingFee" style="color: #10B981;">0đ (Freeship)</strong>
+            </div>
+            <div class="info-row" style="border-top: 1px dashed #E4E4E7; padding-top: 8px; margin-top: 6px;">
+              <span style="font-weight: 700; color: var(--dark); font-size: 0.95rem;">TỔNG CỘNG:</span>
+              <strong id="trackingGrandTotal" style="color: var(--primary); font-size: 1.2rem;">0đ</strong>
+            </div>
+          </div>
+        </div>
+
+        <!-- Items Detail Table -->
+        <h3 style="font-size: 1rem; font-weight: 700; color: var(--dark); margin-bottom: 12px;">
+          Chi Tiết Sản Phẩm Trong Đơn
+        </h3>
+        <div id="trackingItemsList" style="border: 1px solid #E4E4E7; border-radius: var(--radius-sm); padding: 12px 16px; background: #FFF;">
+          <!-- Injected by JS -->
+        </div>
+
+        <!-- Action buttons -->
+        <div style="display: flex; flex-wrap: wrap; gap: 12px; margin-top: 24px; justify-content: center;">
+          <a href="/#catalog" class="btn btn-primary" style="padding: 12px 28px; font-weight: 700;">
+            🛍️ Tiếp Tục Mua Sắm
+          </a>
+          <a href="https://zalo.me/0794763225" target="_blank" rel="noopener noreferrer" class="btn btn-outline" style="padding: 12px 24px; font-weight: 600;">
+            💬 Hỗ Trợ Qua Zalo (0794 763 225)
+          </a>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Footer Copyright -->
+    <footer style="text-align: center; font-size: 0.8rem; color: #A1A1AA; margin-top: 32px;">
+      © 2026 Fitman Sportswear • Xưởng đồ tập gym chuẩn form CBUM & in áo theo yêu cầu.
+    </footer>
+  </main>
+
+  <script>
+    function formatMoney(amount) {
+      return Number(amount || 0).toLocaleString('vi-VN') + 'đ';
+    }
+
+    function copyText(text, btnElem) {
+      if (!text) return;
+      navigator.clipboard.writeText(text).then(() => {
+        if (btnElem) {
+          const orig = btnElem.textContent;
+          btnElem.textContent = "✓ Đã copy!";
+          setTimeout(() => { btnElem.textContent = orig; }, 1800);
+        }
+      }).catch(() => {
+        alert("Đã sao chép: " + text);
+      });
+    }
+
+    function copyOrderId() {
+      const text = document.getElementById('orderIdDisplay')?.textContent.replace('#', '').trim();
+      copyText(text);
+    }
+
+    function lookupManualOrder() {
+      const input = document.getElementById('manualOrderIdInput');
+      const val = input ? input.value.trim() : '';
+      if (val) {
+        window.location.href = `/thank-you.html?order_id=${encodeURIComponent(val)}`;
+      }
+    }
+
+    // Main fetch on page load
+    async function loadOrderTracking() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const orderId = urlParams.get('order_id');
+
+      const loadingElem = document.getElementById('loadingState');
+      const errorElem = document.getElementById('errorState');
+      const contentElem = document.getElementById('orderContent');
+
+      if (!orderId) {
+        if (loadingElem) loadingElem.style.display = 'none';
+        if (errorElem) errorElem.style.display = 'block';
+        return;
+      }
+
+      try {
+        const res = await fetch(`/api/order/${encodeURIComponent(orderId)}`);
+        const data = await res.json();
+
+        if (!data.success || !data.order) {
+          if (loadingElem) loadingElem.style.display = 'none';
+          if (errorElem) errorElem.style.display = 'block';
+          return;
+        }
+
+        const o = data.order;
+
+        // Render values
+        document.getElementById('orderIdDisplay').textContent = '#' + o.id;
+        document.getElementById('orderTimeDisplay').textContent = o.created_at || o.date || 'Hôm nay';
+        document.getElementById('trackingCustName').textContent = o.ten_khach_hang || 'Khách hàng';
+        document.getElementById('trackingCustPhone').textContent = o.so_dien_thoai || '--';
+        document.getElementById('trackingCustAddress').textContent = o.dia_chi || '--';
+        document.getElementById('trackingCustNote').textContent = o.ghi_chu || 'Không có';
+
+        const totalQty = o.so_luong || 1;
+        document.getElementById('trackingTotalQty').textContent = `${totalQty} món`;
+        document.getElementById('trackingGrandTotal').textContent = formatMoney(o.tong_tien);
+
+        const isFreeship = totalQty >= 2;
+        const shippingElem = document.getElementById('trackingShippingFee');
+        if (shippingElem) {
+          shippingElem.textContent = isFreeship ? '0đ (Freeship toàn quốc)' : '30.000đ';
+          shippingElem.style.color = isFreeship ? '#10B981' : '#18181B';
+        }
+
+        // Payment Method Box Handling
+        const payMethod = (o.phuong_thuc_thanh_toan || 'COD').toUpperCase();
+        const payNames = {
+          'COD': 'Thanh toán tiền mặt khi nhận hàng (COD)',
+          'TECHCOMBANK': 'Chuyển khoản Ngân hàng Techcombank',
+          'MOMO': 'Ví Điện Tử MoMo'
+        };
+        document.getElementById('trackingPaymentMethodName').textContent = payNames[payMethod] || payMethod;
+
+        if (payMethod === 'TECHCOMBANK') {
+          document.getElementById('paymentBoxTechcom').style.display = 'block';
+          const tcbAmount = document.getElementById('trackingAmountTcb');
+          tcbAmount.textContent = formatMoney(o.tong_tien);
+          tcbAmount.setAttribute('data-raw', o.tong_tien);
+          document.getElementById('trackingMemoTcb').textContent = `FITMAN ${o.id}`;
+
+          const qrImg = document.getElementById('trackingVietqrImg');
+          if (qrImg) {
+            qrImg.src = `https://img.vietqr.io/image/TCB-3386111168-compact2.png?amount=${o.tong_tien}&addInfo=FITMAN%20${encodeURIComponent(o.id)}&accountName=HO%20KINH%20DOANH%20CUA%20HANG%20FITMAN`;
+          }
+        } else if (payMethod === 'MOMO') {
+          document.getElementById('paymentBoxMomo').style.display = 'block';
+          document.getElementById('trackingAmountMomo').textContent = formatMoney(o.tong_tien);
+          document.getElementById('trackingMemoMomo').textContent = `FITMAN ${o.id}`;
+        } else {
+          document.getElementById('paymentBoxCod').style.display = 'block';
+          document.getElementById('trackingAmountCod').textContent = formatMoney(o.tong_tien);
+        }
+
+        // Render Items List
+        const itemsContainer = document.getElementById('trackingItemsList');
+        if (itemsContainer) {
+          if (o.items_detail && o.items_detail.length > 0) {
+            itemsContainer.innerHTML = o.items_detail.map(item => `
+              <div class="item-row">
+                <img src="${item.image || '/static/brand/logo_icon.png'}" alt="${item.name}" class="item-thumb" />
+                <div style="flex-grow: 1;">
+                  <div style="font-weight: 700; font-size: 0.9rem; color: var(--dark);">${item.name}</div>
+                  <div style="font-size: 0.8rem; color: var(--text-sub); margin-top: 2px;">
+                    Size: <strong style="color: var(--primary); font-size: 0.85rem;">${item.size || 'L'}</strong> • SL: <strong>x${item.qty}</strong>
+                  </div>
+                </div>
+                <div style="font-weight: 700; font-size: 0.95rem; color: var(--dark);">
+                  ${formatMoney(item.price * item.qty)}
+                </div>
+              </div>
+            `).join('');
+          } else if (o.danh_sach_mon && o.danh_sach_mon.length > 0) {
+            itemsContainer.innerHTML = o.danh_sach_mon.map(mon => `
+              <div class="item-row">
+                <div style="width: 44px; height: 44px; background: #FFF9F5; color: var(--primary); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-weight: 800;">
+                  👕
+                </div>
+                <div style="flex-grow: 1; font-weight: 600; font-size: 0.9rem; color: var(--dark);">
+                  ${mon}
+                </div>
+              </div>
+            `).join('');
+          } else {
+            itemsContainer.innerHTML = `<p style="color: var(--text-sub); font-size: 0.85rem;">Combo Sản phẩm Fitman Oversize</p>`;
+          }
+        }
+
+        // Reveal content
+        if (loadingElem) loadingElem.style.display = 'none';
+        if (contentElem) contentElem.style.display = 'block';
+
+      } catch (err) {
+        console.error("Error loading order:", err);
+        if (loadingElem) loadingElem.style.display = 'none';
+        if (errorElem) errorElem.style.display = 'block';
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', loadOrderTracking);
+  </script>
+</body>
+</html>

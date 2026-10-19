@@ -34,7 +34,7 @@
   <meta name="twitter:image" content="https://chatbot-fitman.onrender.com/static/brand/logo_horizontal_light.png" />
 
   <!-- Stylesheet (Cache-busting version) -->
-  <link rel="stylesheet" href="/static/css/style.css?v=2.2" />
+  <link rel="stylesheet" href="/static/css/style.css?v=2.3" />
 
   <!-- ===================================================================
        SCHEMA.ORG JSON-LD (AEO & AI SEARCH OPTIMIZATION)
@@ -367,8 +367,38 @@
             </div>
           </div>
 
-          <div style="background: #F4F4F6; padding: 14px; border-radius: var(--radius-sm); font-size: 0.85rem; color: var(--text-sub);">
-            💡 <em>Lưu ý: Áo Fitman thiết kế theo form CBUM Oversize (vai xô rộng, tay áo chạm khuỷu tay). Nếu muốn mặc vừa ôm cơ bắp hơn có thể chọn lùi 1 size.</em>
+          <div class="input-group">
+            <div class="input-label">
+              <span>Đặc điểm vòng bụng:</span>
+              <strong id="bellyStatusText" class="text-orange" style="font-size: 0.95rem;">Bình thường / Cơ bắp</strong>
+            </div>
+            <div class="belly-options-grid">
+              <div class="belly-option-card active" id="bellyOptNormalCard" onclick="selectBellyOption(false)">
+                <input type="radio" name="bellyOption" value="normal" checked id="bellyOptNormal" style="display: none;">
+                <div class="belly-option-inner">
+                  <span class="belly-icon">💪</span>
+                  <div>
+                    <strong style="display: block; font-size: 0.88rem; color: var(--dark);">Dáng bình thường</strong>
+                    <span style="font-size: 0.74rem; color: var(--text-sub);">Không bụng / Cơ bắp</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="belly-option-card" id="bellyOptBeerCard" onclick="selectBellyOption(true)">
+                <input type="radio" name="bellyOption" value="has_belly" id="bellyOptBeer" style="display: none;">
+                <div class="belly-option-inner">
+                  <span class="belly-icon">🍺</span>
+                  <div>
+                    <strong style="display: block; font-size: 0.88rem; color: var(--dark);">Có bụng / Bụng bia</strong>
+                    <span style="font-size: 0.74rem; color: var(--primary); font-weight: 700;">+ Tự động UP 1 Size</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div style="background: #F4F4F6; padding: 14px; border-radius: var(--radius-sm); font-size: 0.85rem; color: var(--text-sub); margin-top: 14px;">
+            💡 <em>Lưu ý: Áo Fitman thiết kế theo form CBUM Oversize (vai xô rộng, tay áo chạm khuỷu tay). Nếu có bụng, hệ thống sẽ tự động nâng size để áo rủ suông thoải mái, không lo bó sát vòng 2!</em>
           </div>
         </div>
 
@@ -376,8 +406,11 @@
           <span style="font-size: 0.85rem; text-transform: uppercase; font-weight: 700; color: var(--text-sub); margin-bottom: 6px;">Size Khuyến Nghị Cho Bạn</span>
           <div class="size-badge-large" id="sizeOutput">M</div>
           <p class="size-advice" id="sizeAdvice">Với chiều cao 172cm và 68kg, Size M là kích thước chuẩn nhất tôn cơ bắp ngực và xô.</p>
-          <span class="size-note">Form Oversize phủ mông nhẹ, che khuyết điểm bụng và lưng</span>
-          <button class="btn btn-outline" style="margin-top: 18px; padding: 8px 18px; font-size: 0.85rem;" onclick="openLightbox('/static/products/bang_size.jpg', 'Bảng thông số số đo Fitman')">
+          <span class="size-note" id="sizeBellyNote">Form Oversize phủ mông nhẹ, che khuyết điểm bụng và lưng</span>
+          <button class="btn btn-primary" id="applySizeBtn" style="margin-top: 16px; padding: 10px 18px; font-size: 0.88rem; width: 100%; justify-content: center;" onclick="applyRecommendedSizeToShop()">
+            ✓ Chọn Size Này Khi Mua Sắm
+          </button>
+          <button class="btn btn-outline" style="margin-top: 10px; padding: 8px 18px; font-size: 0.85rem; width: 100%; justify-content: center;" onclick="openLightbox('/static/products/bang_size.jpg', 'Bảng thông số số đo Fitman')">
             🔍 Xem Bảng Số Đo Chi Tiết (CM)
           </button>
         </div>
@@ -746,11 +779,166 @@
         <strong id="cartTotal" class="cart-summary-total">0đ</strong>
       </div>
       <p id="cartDiscountInfo" style="font-size: 0.82rem; color: #FF7A1A; font-weight: 600; margin-bottom: 14px;"></p>
-      <button onclick="proceedToCheckout()" class="btn btn-primary" style="width: 100%;">
-        Đặt Hàng Nhanh Qua Messenger
+      <button onclick="openQuickOrderModal()" class="btn btn-primary" style="width: 100%; justify-content: center; font-size: 1rem; font-weight: 800; padding: 14px; box-shadow: var(--shadow-orange);">
+        ⚡ ĐẶT HÀNG NHANH (CHỈ VÀI BẤM)
       </button>
     </div>
   </aside>
+
+  <!-- ===================================================================
+       FAST CHECKOUT MODAL (ĐẶT HÀNG TRỰC TIẾP KHÔNG QUA FACEBOOK)
+       =================================================================== -->
+  <div id="quickOrderModal" class="quick-order-modal" role="dialog" aria-modal="true" aria-label="Đặt hàng nhanh Fitman">
+    <div class="quick-order-card">
+      <div class="quick-order-header">
+        <div>
+          <span class="badge badge-orange" style="margin-bottom: 6px;">⚡ ĐẶT HÀNG NHANH CHỈ VÀI BẤM</span>
+          <h3 class="quick-order-title">Thông Tin Đơn Hàng Của Bạn</h3>
+          <p style="font-size: 0.85rem; color: var(--text-sub); margin: 0;">Không cần tài khoản • Điền thông tin giao hàng & nhận mã tracking ngay</p>
+        </div>
+        <button onclick="closeQuickOrderModal()" style="font-size: 1.8rem; line-height: 1; color: #71717A; cursor: pointer; background: none; border: none; padding: 4px;">&times;</button>
+      </div>
+
+      <!-- Danh sách sản phẩm trong đơn -->
+      <div style="background: #F8F8FA; border: 1px solid #E4E4E7; border-radius: var(--radius-md); padding: 14px 16px; margin-bottom: 18px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+          <strong style="font-size: 0.9rem; color: var(--dark);">Sản phẩm đã chọn (<span id="quickOrderQty">0</span> món):</strong>
+          <a href="javascript:void(0)" onclick="closeQuickOrderModal(); openCart();" style="font-size: 0.8rem; color: var(--primary); font-weight: 600;">Sửa giỏ hàng</a>
+        </div>
+        <div id="quickOrderItemsList" style="display: flex; flex-direction: column; gap: 10px; max-height: 180px; overflow-y: auto;">
+          <!-- Injected by app.js -->
+        </div>
+      </div>
+
+      <form id="quickOrderForm" onsubmit="submitQuickOrder(event)">
+        <!-- 3 thông tin cơ bản: Tên, SĐT, Địa chỉ -->
+        <div style="margin-bottom: 16px;">
+          <h4 style="font-size: 0.95rem; font-weight: 700; color: var(--dark); margin-bottom: 10px;">1. Thông Tin Nhận Hàng (3 trường nhanh):</h4>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+            <div>
+              <label style="display: block; font-size: 0.8rem; font-weight: 600; color: var(--dark); margin-bottom: 4px;">Họ và tên người nhận *</label>
+              <input type="text" id="quickOrderName" class="form-input" placeholder="Ví dụ: Nguyễn Văn Tuấn" required />
+            </div>
+            <div>
+              <label style="display: block; font-size: 0.8rem; font-weight: 600; color: var(--dark); margin-bottom: 4px;">Số điện thoại nhận hàng *</label>
+              <input type="tel" id="quickOrderPhone" class="form-input" placeholder="Ví dụ: 0912 345 678" pattern="[0-9]{10,11}" required />
+            </div>
+          </div>
+          <div style="margin-bottom: 12px;">
+            <label style="display: block; font-size: 0.8rem; font-weight: 600; color: var(--dark); margin-bottom: 4px;">Địa chỉ giao hàng chi tiết *</label>
+            <input type="text" id="quickOrderAddress" class="form-input" placeholder="Số nhà, tên đường, phường/xã, quận/huyện, tỉnh thành..." required />
+          </div>
+          <div>
+            <label style="display: block; font-size: 0.8rem; font-weight: 600; color: var(--text-sub); margin-bottom: 4px;">Ghi chú đơn hàng (Tùy chọn)</label>
+            <input type="text" id="quickOrderNote" class="form-input" placeholder="Ví dụ: Giao giờ hành chính, gọi trước khi giao..." />
+          </div>
+        </div>
+
+        <!-- Phương thức thanh toán (3 lựa chọn rõ ràng) -->
+        <div style="margin-bottom: 16px;">
+          <h4 style="font-size: 0.95rem; font-weight: 700; color: var(--dark); margin-bottom: 6px;">2. Chọn Hình Thức Thanh Toán:</h4>
+          
+          <div class="payment-tabs">
+            <div class="payment-tab-btn active" id="payTabCod" onclick="selectPaymentMethod('COD')">
+              <span class="pay-icon">💵</span>
+              <span class="pay-title">Thanh Toán Khi Nhận (COD)</span>
+              <span class="pay-sub">Đồng kiểm trước khi trả tiền</span>
+            </div>
+
+            <div class="payment-tab-btn" id="payTabTechcom" onclick="selectPaymentMethod('TECHCOMBANK')">
+              <span class="pay-icon">🏦</span>
+              <span class="pay-title">Chuyển Khoản Techcombank</span>
+              <span class="pay-sub">Quét VietQR tự điền số tiền</span>
+            </div>
+
+            <div class="payment-tab-btn" id="payTabMomo" onclick="selectPaymentMethod('MOMO')">
+              <span class="pay-icon">📱</span>
+              <span class="pay-title">Ví Điện Tử MoMo</span>
+              <span class="pay-sub">Chuyển tiền nhanh qua SĐT</span>
+            </div>
+          </div>
+
+          <!-- Chi tiết theo từng hình thức -->
+          <div id="payDetailsCod" class="payment-info-box">
+            <div style="display: flex; gap: 10px; align-items: center;">
+              <span style="font-size: 1.6rem;">📦</span>
+              <div>
+                <strong style="color: var(--dark); font-size: 0.9rem;">Thanh toán tiền mặt khi nhận hàng (COD)</strong>
+                <p style="font-size: 0.82rem; color: var(--text-sub); margin: 2px 0 0;">Shipper giao tận nơi, bạn được quyền mở bưu phẩm kiểm tra đúng mẫu, đúng size trước khi thanh toán.</p>
+              </div>
+            </div>
+          </div>
+
+          <div id="payDetailsTechcom" class="payment-info-box" style="display: none;">
+            <div style="display: grid; grid-template-columns: 140px 1fr; gap: 16px; align-items: center;">
+              <div style="background: #FFFFFF; padding: 8px; border-radius: 8px; border: 1px solid #E4E4E7; text-align: center;">
+                <img id="quickOrderVietqrImg" src="https://img.vietqr.io/image/TCB-3386111168-compact2.png?amount=299000&addInfo=FITMAN%20ORDER&accountName=HO%20KINH%20DOANH%20CUA%20HANG%20FITMAN" alt="VietQR Techcombank" style="width: 100%; display: block; border-radius: 4px;" />
+                <span style="font-size: 0.7rem; color: var(--text-sub); margin-top: 4px; display: block;">Quét bằng mọi app Ngân hàng</span>
+              </div>
+              <div style="font-size: 0.85rem; color: var(--dark);">
+                <div style="margin-bottom: 6px;">
+                  <span style="color: var(--text-sub);">Ngân hàng:</span> <strong>Techcombank</strong>
+                </div>
+                <div style="margin-bottom: 6px; display: flex; align-items: center; gap: 8px;">
+                  <span style="color: var(--text-sub);">Số tài khoản:</span> <strong style="color: var(--primary); font-size: 1.05rem;" id="tcbStkText">3386111168</strong>
+                  <button type="button" class="copy-pill-btn" onclick="copyText('3386111168', this)">📋 Copy</button>
+                </div>
+                <div style="margin-bottom: 6px;">
+                  <span style="color: var(--text-sub);">Chủ TK:</span> <strong>HO KINH DOANH CUA HANG FITMAN</strong>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <span style="color: var(--text-sub);">Số tiền:</span> <strong id="tcbAmountText" style="color: var(--primary);">299.000đ</strong>
+                  <button type="button" class="copy-pill-btn" onclick="copyText(document.getElementById('tcbAmountText').getAttribute('data-raw'), this)">📋 Copy</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div id="payDetailsMomo" class="payment-info-box" style="display: none;">
+            <div style="display: flex; gap: 14px; align-items: center;">
+              <div style="width: 48px; height: 48px; background: #A50064; color: #FFFFFF; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 1.2rem; flex-shrink: 0;">
+                M
+              </div>
+              <div style="font-size: 0.85rem; color: var(--dark); flex-grow: 1;">
+                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                  <span style="color: var(--text-sub);">Số MoMo:</span> <strong style="color: #A50064; font-size: 1.05rem;">0794763225</strong>
+                  <button type="button" class="copy-pill-btn" onclick="copyText('0794763225', this)">📋 Copy SĐT</button>
+                </div>
+                <div>
+                  <span style="color: var(--text-sub);">Tên người nhận:</span> <strong>HO KINH DOANH CUA HANG FITMAN</strong>
+                </div>
+                <div style="margin-top: 4px; font-size: 0.8rem; color: var(--text-sub);">
+                  Vui lòng nhập nội dung chuyển tiền: <em>Họ tên + SĐT của bạn</em>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tóm tắt thanh toán -->
+        <div style="border-top: 1px dashed #E4E4E7; padding-top: 14px; margin-bottom: 16px;">
+          <div style="display: flex; justify-content: space-between; font-size: 0.9rem; margin-bottom: 6px;">
+            <span style="color: var(--text-sub);">Tạm tính:</span>
+            <strong id="quickOrderSubtotal">0đ</strong>
+          </div>
+          <div style="display: flex; justify-content: space-between; font-size: 0.9rem; margin-bottom: 6px;">
+            <span style="color: var(--text-sub);">Phí vận chuyển:</span>
+            <strong id="quickOrderShipping" style="color: #10B981;">0đ (Freeship)</strong>
+          </div>
+          <div style="display: flex; justify-content: space-between; font-size: 1.15rem; font-weight: 800; color: var(--dark); margin-top: 8px;">
+            <span>TỔNG THANH TOÁN:</span>
+            <strong id="quickOrderGrandTotal" style="color: var(--primary); font-size: 1.3rem;">0đ</strong>
+          </div>
+        </div>
+
+        <div id="quickOrderStatusMessage" style="display: none; padding: 12px; border-radius: 8px; font-size: 0.9rem; text-align: center; margin-bottom: 12px;"></div>
+
+        <button type="submit" id="quickOrderSubmitBtn" class="btn btn-primary" style="width: 100%; padding: 15px; font-weight: 800; font-size: 1.05rem; justify-content: center; box-shadow: var(--shadow-orange);">
+          🚀 XÁC NHẬN ĐẶT HÀNG NGAY
+        </button>
+      </form>
+    </div>
+  </div>
 
   <!-- ===================================================================
        VIETQR PREPAYMENT MODAL (THANH TOÁN TRƯỚC ĐƠN IN THEO YÊU CẦU)
@@ -766,22 +954,22 @@
 
       <div class="vietqr-body-grid">
         <div class="qr-image-wrapper">
-          <img id="vietqrImage" src="https://img.vietqr.io/image/MB-0901234567-compact2.png?amount=190000&addInfo=FITMAN%20CUST&accountName=FITMAN%20SPORTSWEAR" alt="Mã thanh toán VietQR Fitman" />
+          <img id="vietqrImage" src="https://img.vietqr.io/image/TCB-3386111168-compact2.png?amount=190000&addInfo=FITMAN%20CUST&accountName=HO%20KINH%20DOANH%20CUA%20HANG%20FITMAN" alt="Mã thanh toán VietQR Fitman" />
           <span style="font-size: 0.75rem; color: #71717A; margin-top: 6px; display: block;">Quét bằng app mọi ngân hàng hoặc MoMo</span>
         </div>
 
         <div class="bank-info-box">
           <div class="bank-row">
             <span>Ngân hàng:</span>
-            <strong>MBBank (Quân Đội)</strong>
+            <strong>Techcombank</strong>
           </div>
           <div class="bank-row">
             <span>Số tài khoản:</span>
-            <strong id="bankAccNo">0901234567</strong>
+            <strong id="bankAccNo">3386111168</strong>
           </div>
           <div class="bank-row">
             <span>Chủ tài khoản:</span>
-            <strong>FITMAN SPORTSWEAR</strong>
+            <strong>HO KINH DOANH CUA HANG FITMAN</strong>
           </div>
           <div class="bank-row">
             <span>Số tiền:</span>
@@ -811,6 +999,6 @@
   </div>
 
   <!-- Script (Cache-busting version) -->
-  <script src="/static/js/app.js?v=2.2"></script>
+  <script src="/static/js/app.js?v=2.3"></script>
 </body>
 </html>

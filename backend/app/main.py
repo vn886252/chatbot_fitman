@@ -174,6 +174,14 @@ async def root():
         "daily_report_url": "/api/report/today"
     }
 
+@app.get("/thank-you")
+@app.get("/thank-you.html")
+async def thank_you():
+    page_path = os.path.join(static_dir, "thank-you.html")
+    if os.path.exists(page_path):
+        return FileResponse(page_path)
+    return {"status": "ok", "message": "Fitman Thank You Page"}
+
 @app.get("/api/info")
 async def api_info():
     return {
@@ -285,6 +293,110 @@ async def create_custom_order(order_req: CustomOrderRequest):
             "success": False,
             "error": str(e)
         }
+
+class QuickOrderItem(BaseModel):
+    id: Optional[str] = ""
+    name: str
+    size: str = "L"
+    qty: int = 1
+    price: int = 150000
+    image: Optional[str] = ""
+
+class QuickOrderRequest(BaseModel):
+    customer_name: str
+    customer_phone: str
+    shipping_address: str
+    payment_method: str = "COD"  # "COD" | "TECHCOMBANK" | "MOMO"
+    items: List[QuickOrderItem] = []
+    total_amount: int = 0
+    note: Optional[str] = ""
+
+@app.post("/api/quick-order")
+async def create_quick_order(order_req: QuickOrderRequest):
+    """
+    Tiếp nhận đơn hàng nhanh trực tiếp từ website không cần chuyển qua Facebook.
+    Chỉ cần: Họ tên người nhận, Số điện thoại và Địa chỉ giao hàng.
+    Thanh toán: COD, Chuyển khoản Techcombank, hoặc MoMo.
+    Tự động đồng bộ vào hệ thống đơn hàng và gửi thông báo Telegram cho chủ shop.
+    """
+    from app.services.order_service import save_order
+    from app.services.telegram_service import send_new_order_notification
+
+    # Chuẩn hoá danh sách món & chi tiết size
+    danh_sach_mon = []
+    items_detail = []
+    so_luong = 0
+    for it in order_req.items:
+        qty = max(1, int(it.qty))
+        size_str = (it.size or "L").upper()
+        danh_sach_mon.append(f"{it.name} (Size {size_str}) x{qty}")
+        items_detail.append({
+            "id": it.id,
+            "name": it.name,
+            "size": size_str,
+            "qty": qty,
+            "price": it.price,
+            "image": it.image
+        })
+        so_luong += qty
+
+    if not danh_sach_mon:
+        danh_sach_mon = ["Combo Áo Thun Fitman Oversize"]
+        so_luong = 1
+
+    payment_method_display = {
+        "COD": "💵 COD (Thanh toán khi nhận)",
+        "TECHCOMBANK": "🏦 Techcombank (3386111168 - HO KINH DOANH CUA HANG FITMAN)",
+        "MOMO": "📱 Ví MoMo (0794763225 - HO KINH DOANH CUA HANG FITMAN)"
+    }.get(order_req.payment_method.upper(), order_req.payment_method)
+
+    note_text = f"[{payment_method_display}]"
+    if order_req.note:
+        note_text += f" {order_req.note}"
+
+    order_payload = {
+        "ten_khach_hang": order_req.customer_name,
+        "so_dien_thoai": order_req.customer_phone,
+        "dia_chi": order_req.shipping_address,
+        "so_luong": so_luong,
+        "tong_tien": order_req.total_amount,
+        "danh_sach_mon": danh_sach_mon,
+        "items_detail": items_detail,
+        "phuong_thuc_thanh_toan": order_req.payment_method.upper(),
+        "ghi_chu": note_text,
+        "trang_thai": "Đã tiếp nhận",
+        "force_new": True
+    }
+
+    try:
+        saved_order = save_order(order_payload)
+        if not saved_order:
+            return {"success": False, "error": "Thông tin đặt hàng không hợp lệ. Vui lòng kiểm tra lại số điện thoại hoặc địa chỉ."}
+
+        await send_new_order_notification(saved_order)
+        return {
+            "success": True,
+            "order_id": saved_order.get("id"),
+            "order_number": saved_order.get("order_number_today"),
+            "order": saved_order,
+            "message": "Đơn hàng của bạn đã được ghi nhận thành công! Fitman sẽ đóng gói và gửi hàng sớm nhất."
+        }
+    except Exception as e:
+        logger.error(f"Error creating quick order: {e}")
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
+@app.get("/api/order/{order_id}")
+async def get_order_tracking(order_id: str):
+    """Lấy thông tin chi tiết đơn hàng để hiển thị tracking trên trang Cảm ơn."""
+    from app.services.order_service import get_order_by_id
+    order = get_order_by_id(order_id)
+    if not order:
+        return {"success": False, "error": "Không tìm thấy đơn hàng với mã này."}
+    return {"success": True, "order": order}
+
 
 @app.get("/api/payment/vietqr")
 async def get_vietqr_info(amount: int = 190000, memo: str = "FITMAN CUST"):
