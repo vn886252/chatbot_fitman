@@ -191,6 +191,7 @@ async def get_catalog():
     """Endpoint trả về toàn bộ dữ liệu sản phẩm và chính sách giá."""
     catalog_path = os.path.join(os.path.dirname(__file__), "data", "catalog.json")
     new_models_path = os.path.join(os.path.dirname(__file__), "data", "new_models.json")
+    individual_path = os.path.join(os.path.dirname(__file__), "data", "catalog_individual.json")
     data = {}
     if os.path.exists(catalog_path):
         try:
@@ -204,7 +205,28 @@ async def get_catalog():
                 data["new_models"] = json.load(f)
         except Exception:
             pass
+    if os.path.exists(individual_path):
+        try:
+            with open(individual_path, "r", encoding="utf-8") as f:
+                data["individual_products"] = json.load(f)
+        except Exception:
+            pass
     return data
+
+@app.get("/api/products")
+async def get_products(category: Optional[str] = None):
+    """Endpoint trả về danh sách 58+ sản phẩm lẻ chuẩn SEO."""
+    individual_path = os.path.join(os.path.dirname(__file__), "data", "catalog_individual.json")
+    if os.path.exists(individual_path):
+        try:
+            with open(individual_path, "r", encoding="utf-8") as f:
+                products = json.load(f)
+                if category and category != "all":
+                    products = [p for p in products if p.get("category") == category]
+                return {"success": True, "total": len(products), "products": products}
+        except Exception as e:
+            logger.error(f"Error reading products: {e}")
+    return {"success": False, "total": 0, "products": []}
 
 class CustomOrderRequest(BaseModel):
     ten_khach_hang: str = "Khách hàng"

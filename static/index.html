@@ -238,18 +238,34 @@
       <div class="section-header">
         <span class="section-subtitle">DANH MỤC SẢN PHẨM CÓ SẴN</span>
         <h2 class="section-title">Bộ Sưu Tập Đồ Tập Gym Hot Nhất</h2>
-        <p class="section-desc">Hơn 60+ mẫu áo Oversize CBUM, Wolves & Quần short thể thao tuyển chọn. Chạm vào ảnh để phóng to xem chi tiết mã áo.</p>
+        <p class="section-desc">Hơn 58+ mẫu áo Oversize CBUM, Wolves & Quần short tuyển chọn chụp studio thực tế. Bấm vào ảnh để phóng to chi tiết mặt trước & sau.</p>
       </div>
 
-      <div class="catalog-tabs">
-        <button class="tab-btn active" data-category="all">Tất Cả Sản Phẩm</button>
-        <button class="tab-btn" data-category="new">Mẫu Mới 2026 🔥</button>
-        <button class="tab-btn" data-category="ao">Áo Thun Gym Oversize</button>
-        <button class="tab-btn" data-category="quan">Quần Đùi Tập Gym</button>
+      <!-- THANH TÌM KIẾM MẪU SẢN PHẨM -->
+      <div class="catalog-search-wrap">
+        <input type="text" id="catalogSearchInput" class="catalog-search-input" placeholder="🔍 Tìm theo mã áo (R1, 34, W2...), màu sắc (Đen, Trắng, Cát...), tên mẫu..." aria-label="Tìm kiếm sản phẩm Fitman" />
+        <button id="catalogSearchClear" class="search-clear-btn" style="display: none;" title="Xóa tìm kiếm">✕</button>
+      </div>
+
+      <!-- TABS PHÂN LOẠI DANH MỤC -->
+      <div class="catalog-tabs" id="productTabs">
+        <button class="tab-btn active" data-category="all">Tất Cả (<span id="tabCountAll">58</span>)</button>
+        <button class="tab-btn" data-category="new">Mẫu Mới 2026 🔥 (<span id="tabCountNew">13</span>)</button>
+        <button class="tab-btn" data-category="cbum">Áo CBUM Olympia (<span id="tabCountCbum">32</span>)</button>
+        <button class="tab-btn" data-category="wolves">Áo Wolves & Skull (<span id="tabCountWolves">7</span>)</button>
+        <button class="tab-btn" data-category="quan">Quần Đùi Gym (<span id="tabCountQuan">6</span>)</button>
+        <button class="tab-btn" data-category="group">Bảng Mã Tổng Hợp (8)</button>
       </div>
 
       <div class="product-grid" id="productGrid">
         <!-- Rendered dynamically by app.js -->
+      </div>
+
+      <!-- NÚT XEM THÊM (PAGINATION) -->
+      <div id="loadMoreContainer" style="text-align: center; margin-top: 40px;">
+        <button id="loadMoreBtn" class="btn btn-outline" style="min-width: 240px; font-weight: 600;">
+          <span id="loadMoreText">Xem Thêm Mẫu Hot 👇</span>
+        </button>
       </div>
     </div>
   </section>

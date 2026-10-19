@@ -23,20 +23,22 @@ from app.services.telegram_service import (
 
 def test_get_period_summary_empty():
     """Kiểm tra get_period_summary khi chưa có đơn hàng nào."""
-    res_today = get_period_summary("today")
-    assert res_today["period_type"] == "today"
-    assert "start_date" in res_today
-    assert "end_date" in res_today
-    assert isinstance(res_today["orders"], list)
-    assert res_today["total_orders"] == 0
+    from pathlib import Path
+    with patch("app.services.order_service.ORDERS_FILE", Path("non_existent_orders.json")):
+        res_today = get_period_summary("today")
+        assert res_today["period_type"] == "today"
+        assert "start_date" in res_today
+        assert "end_date" in res_today
+        assert isinstance(res_today["orders"], list)
+        assert res_today["total_orders"] == 0
 
-    res_week = get_period_summary("week")
-    assert res_week["period_type"] == "week"
-    assert res_week["total_orders"] == 0
+        res_week = get_period_summary("week")
+        assert res_week["period_type"] == "week"
+        assert res_week["total_orders"] == 0
 
-    res_month = get_period_summary("month")
-    assert res_month["period_type"] == "month"
-    assert res_month["total_orders"] == 0
+        res_month = get_period_summary("month")
+        assert res_month["period_type"] == "month"
+        assert res_month["total_orders"] == 0
 
 
 def test_get_period_summary_with_mock_orders():

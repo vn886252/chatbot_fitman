@@ -230,4 +230,26 @@ class TestWebhookAndRoutes:
             assert "order_id" in data
             assert mock_tg.await_count == 1
 
+    def test_products_endpoint(self):
+        res = client.get("/api/products")
+        assert res.status_code == 200
+        data = res.json()
+        assert data["success"] is True
+        assert data["total"] >= 50
+        assert len(data["products"]) >= 50
+
+        # Test filter by category
+        res_new = client.get("/api/products?category=new")
+        assert res_new.status_code == 200
+        data_new = res_new.json()
+        assert data_new["success"] is True
+        assert all(p["category"] == "new" for p in data_new["products"])
+
+    def test_catalog_endpoint(self):
+        res = client.get("/api/catalog")
+        assert res.status_code == 200
+        data = res.json()
+        assert "individual_products" in data
+        assert len(data["individual_products"]) >= 50
+
 

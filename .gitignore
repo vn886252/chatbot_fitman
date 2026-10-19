@@ -21,3 +21,6 @@ Thumbs.db
 
 # Scratch scripts
 scratch/
+
+# Raw product sources (thư mục ảnh gốc ở root - giữ nguyên trên máy, đã tối ưu sang static/products/items/)
+/products/
