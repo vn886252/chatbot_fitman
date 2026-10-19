@@ -34,7 +34,7 @@
   <meta name="twitter:image" content="https://chatbot-fitman.onrender.com/static/brand/logo_horizontal_light.png" />
 
   <!-- Stylesheet (Cache-busting version) -->
-  <link rel="stylesheet" href="/static/css/style.css?v=3.0" />
+  <link rel="stylesheet" href="/static/css/style.css?v=3.1" />
 
   <!-- ===================================================================
        SCHEMA.ORG JSON-LD (AEO & AI SEARCH OPTIMIZATION)
@@ -955,11 +955,12 @@
 
       <!-- Danh sách sản phẩm trong đơn -->
       <div style="background: #F8F8FA; border: 1px solid #E4E4E7; border-radius: var(--radius-md); padding: 14px 16px; margin-bottom: 18px;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
           <strong style="font-size: 0.9rem; color: var(--dark);">Sản phẩm đã chọn (<span id="quickOrderQty">0</span> món):</strong>
-          <a href="javascript:void(0)" onclick="closeQuickOrderModal(); openCart();" style="font-size: 0.8rem; color: var(--primary); font-weight: 600;">Sửa giỏ hàng</a>
+          <a href="javascript:void(0)" onclick="closeQuickOrderModal(); openCart();" style="font-size: 0.8rem; color: var(--primary); font-weight: 600;">+ Thêm món khác</a>
         </div>
-        <div id="quickOrderItemsList" style="display: flex; flex-direction: column; gap: 10px; max-height: 180px; overflow-y: auto;">
+        <p style="font-size: 0.73rem; color: #71717A; margin-bottom: 8px;">💡 Bấm chọn Size trực tiếp từng áo ngay bên dưới (S: &lt;62kg • M: 62-72kg • L: 73-83kg • XL: &gt;83kg/Có bụng):</p>
+        <div id="quickOrderItemsList" style="display: flex; flex-direction: column; gap: 10px; max-height: 200px; overflow-y: auto;">
           <!-- Injected by app.js -->
         </div>
       </div>
@@ -1159,6 +1160,6 @@
   </a>
 
   <!-- Script (Cache-busting version) -->
-  <script src="/static/js/app.js?v=3.0"></script>
+  <script src="/static/js/app.js?v=3.1"></script>
 </body>
 </html>

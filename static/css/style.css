@@ -1695,6 +1695,115 @@ button {
   color: var(--primary);
 }
 
+/* CART SIZE SELECTOR & QUICK GUIDE */
+.cart-global-size-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #FFF9F5;
+  border: 1px solid rgba(255, 122, 26, 0.25);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  margin-bottom: 8px;
+}
+.cart-global-size-label {
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: var(--dark);
+}
+.cart-item-size-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+}
+.cart-size-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-sub);
+}
+.cart-size-pills {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.cart-size-pill {
+  width: 28px;
+  height: 25px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px solid #D4D4D8;
+  border-radius: 5px;
+  background: #FFFFFF;
+  color: var(--dark);
+  font-size: 0.75rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  padding: 0;
+}
+.cart-size-pill:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+  background: var(--primary-light);
+}
+.cart-size-pill.active {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: #FFFFFF;
+  box-shadow: 0 2px 6px rgba(255, 122, 26, 0.35);
+}
+
+.cart-size-guide-box {
+  background: #FFFBF8;
+  border: 1px solid rgba(255, 122, 26, 0.25);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  margin-top: 10px;
+}
+.cart-size-guide-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: var(--primary);
+  margin-bottom: 8px;
+}
+.cart-size-guide-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  font-size: 0.72rem;
+  color: var(--text-main);
+  background: #FFFFFF;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid rgba(228, 228, 231, 0.8);
+}
+.size-hint-item strong {
+  color: var(--dark);
+}
+.cart-belly-hint {
+  margin-top: 8px;
+  font-size: 0.72rem;
+  color: #52525B;
+  line-height: 1.4;
+}
+.cart-size-calc-link {
+  display: inline-block;
+  margin-top: 6px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: var(--primary);
+  text-decoration: underline;
+  cursor: pointer;
+}
+.cart-size-calc-link:hover {
+  color: var(--primary-hover);
+}
+
 /* ===================================================================
    FOOTER
    =================================================================== */

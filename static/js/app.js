@@ -1323,6 +1323,22 @@ function updateCartItemSize(index, newSize) {
   if (!cartItems[index]) return;
   cartItems[index].size = newSize;
   renderCart();
+  
+  const modal = document.getElementById('quickOrderModal');
+  if (modal && modal.classList.contains('active')) {
+    populateQuickOrderItems();
+  }
+}
+
+function applySizeToAllItems(newSize) {
+  cartItems.forEach(item => { item.size = newSize; });
+  currentRecommendedSize = newSize;
+  renderCart();
+  
+  const modal = document.getElementById('quickOrderModal');
+  if (modal && modal.classList.contains('active')) {
+    populateQuickOrderItems();
+  }
 }
 
 function updateCartBadge() {
@@ -1390,31 +1406,77 @@ function renderCart() {
     discountNote = `🎉 Đồng giá sỉ ${formatMoney(130000)}/món + FREESHIP toàn quốc!`;
   }
 
-  body.innerHTML = cartItems.map((item, idx) => `
-    <div style="display: flex; gap: 12px; padding-bottom: 12px; border-bottom: 1px solid #F4F4F5; align-items: center;">
-      <img src="${item.image}" alt="${item.name}" style="width: 58px; height: 58px; object-fit: cover; border-radius: 8px; flex-shrink: 0;" />
-      <div style="flex-grow: 1; min-width: 0;">
-        <h4 style="font-size: 0.86rem; font-weight: 700; color: #18181B; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${item.name}</h4>
-        <div style="display: flex; align-items: center; gap: 8px; margin-top: 4px;">
-          <span style="font-size: 0.82rem; color: #FF7A1A; font-weight: 700;">150.000đ</span>
-          <div style="display: inline-flex; align-items: center; gap: 4px;">
-            <label style="font-size: 0.72rem; color: #71717A;">Size:</label>
-            <select onchange="updateCartItemSize(${idx}, this.value)" style="padding: 2px 6px; border: 1px solid #D4D4D8; border-radius: 4px; font-size: 0.75rem; font-weight: 700; background: #FFF; cursor: pointer; color: #18181B;">
-              <option value="S" ${item.size === 'S' ? 'selected' : ''}>S (<62kg)</option>
-              <option value="M" ${item.size === 'M' ? 'selected' : ''}>M (62-72kg)</option>
-              <option value="L" ${item.size === 'L' ? 'selected' : ''}>L (73-83kg)</option>
-              <option value="XL" ${item.size === 'XL' ? 'selected' : ''}>XL (>83kg / Có bụng)</option>
-            </select>
-          </div>
-        </div>
-      </div>
-      <div style="display: flex; align-items: center; gap: 6px; flex-shrink: 0;">
-        <button onclick="updateCartQtyByIndex(${idx}, -1)" style="width: 24px; height: 24px; background: #F4F4F5; border-radius: 4px; font-weight: bold; cursor: pointer; border: none;">-</button>
-        <span style="font-weight: 600; font-size: 0.88rem; min-width: 16px; text-align: center;">${item.qty}</span>
-        <button onclick="updateCartQtyByIndex(${idx}, 1)" style="width: 24px; height: 24px; background: #F4F4F5; border-radius: 4px; font-weight: bold; cursor: pointer; border: none;">+</button>
+  // Check if all items currently share the same size
+  const allSameSize = cartItems.length > 0 && cartItems.every(i => i.size === cartItems[0].size) ? cartItems[0].size : null;
+
+  body.innerHTML = `
+    <!-- ĐỔI SIZE NHANH TOÀN BỘ GIỎ HÀNG -->
+    <div class="cart-global-size-bar">
+      <span class="cart-global-size-label">📐 Đổi size cả giỏ hàng:</span>
+      <div class="cart-size-pills">
+        <button type="button" class="cart-size-pill ${allSameSize === 'S' ? 'active' : ''}" onclick="applySizeToAllItems('S')" title="Đổi tất cả sang Size S (<62kg)">S</button>
+        <button type="button" class="cart-size-pill ${allSameSize === 'M' ? 'active' : ''}" onclick="applySizeToAllItems('M')" title="Đổi tất cả sang Size M (62-72kg)">M</button>
+        <button type="button" class="cart-size-pill ${allSameSize === 'L' ? 'active' : ''}" onclick="applySizeToAllItems('L')" title="Đổi tất cả sang Size L (73-83kg)">L</button>
+        <button type="button" class="cart-size-pill ${allSameSize === 'XL' ? 'active' : ''}" onclick="applySizeToAllItems('XL')" title="Đổi tất cả sang Size XL (>83kg / Có bụng)">XL</button>
       </div>
     </div>
-  `).join('');
+
+    <!-- DANH SÁCH TỪNG ÁO TRONG GIỎ -->
+    <div class="cart-items-list" style="display: flex; flex-direction: column; gap: 12px;">
+      ${cartItems.map((item, idx) => `
+        <div style="display: flex; gap: 10px; padding-bottom: 12px; border-bottom: 1px solid #F4F4F5; align-items: flex-start;">
+          <img src="${item.image}" alt="${item.name}" style="width: 58px; height: 58px; object-fit: cover; border-radius: 8px; flex-shrink: 0; margin-top: 2px;" />
+          <div style="flex-grow: 1; min-width: 0;">
+            <div style="display: flex; justify-content: space-between; align-items: baseline; gap: 6px;">
+              <h4 style="font-size: 0.85rem; font-weight: 700; color: #18181B; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${item.name}</h4>
+              <span style="font-size: 0.82rem; color: #FF7A1A; font-weight: 800; flex-shrink: 0;">150.000đ</span>
+            </div>
+            
+            <!-- CHỌN SIZE TRỰC TIẾP CHO TỪNG ÁO -->
+            <div class="cart-item-size-wrap">
+              <span class="cart-size-label">Size:</span>
+              <div class="cart-size-pills">
+                <button type="button" class="cart-size-pill ${item.size === 'S' ? 'active' : ''}" onclick="updateCartItemSize(${idx}, 'S')" title="Size S (<62kg)">S</button>
+                <button type="button" class="cart-size-pill ${item.size === 'M' ? 'active' : ''}" onclick="updateCartItemSize(${idx}, 'M')" title="Size M (62-72kg)">M</button>
+                <button type="button" class="cart-size-pill ${item.size === 'L' ? 'active' : ''}" onclick="updateCartItemSize(${idx}, 'L')" title="Size L (73-83kg)">L</button>
+                <button type="button" class="cart-size-pill ${item.size === 'XL' ? 'active' : ''}" onclick="updateCartItemSize(${idx}, 'XL')" title="Size XL (>83kg / Có bụng)">XL</button>
+              </div>
+            </div>
+
+            <!-- TĂNG GIẢM SỐ LƯỢNG & NÚT XÓA -->
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 6px;">
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <button onclick="updateCartQtyByIndex(${idx}, -1)" style="width: 24px; height: 24px; background: #F4F4F5; border-radius: 4px; font-weight: bold; cursor: pointer; border: none; display: flex; align-items: center; justify-content: center; font-size: 0.95rem;">-</button>
+                <span style="font-weight: 700; font-size: 0.86rem; min-width: 18px; text-align: center;">${item.qty}</span>
+                <button onclick="updateCartQtyByIndex(${idx}, 1)" style="width: 24px; height: 24px; background: #F4F4F5; border-radius: 4px; font-weight: bold; cursor: pointer; border: none; display: flex; align-items: center; justify-content: center; font-size: 0.95rem;">+</button>
+              </div>
+              <button onclick="updateCartQtyByIndex(${idx}, -${item.qty})" style="font-size: 0.72rem; color: #A1A1AA; background: none; border: none; cursor: pointer; text-decoration: underline;" title="Xóa áo này">Xóa</button>
+            </div>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+
+    <!-- KHỐI HƯỚNG DẪN SIZE NGAY TẠI GIỎ HÀNG -->
+    <div class="cart-size-guide-box">
+      <div class="cart-size-guide-header">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+        <span>Gợi ý chọn Size chuẩn Form CBUM:</span>
+      </div>
+      <div class="cart-size-guide-grid">
+        <div class="size-hint-item"><strong>Size S:</strong> &lt; 62kg (1m55 - 1m68)</div>
+        <div class="size-hint-item"><strong>Size M:</strong> 62 - 72kg (1m68 - 1m75)</div>
+        <div class="size-hint-item"><strong>Size L:</strong> 73 - 83kg (1m73 - 1m82)</div>
+        <div class="size-hint-item"><strong>Size XL:</strong> &gt; 83kg (hoặc có bụng)</div>
+      </div>
+      <div class="cart-belly-hint">
+        💡 <em>Nếu anh em có bụng bia / bụng tròn, hãy chọn tăng lên 1 size (tối đa XL) để áo đứng form vai ngực và che bụng tốt nhất!</em>
+      </div>
+      <a href="javascript:void(0)" onclick="closeCart(); document.getElementById('size-finder')?.scrollIntoView({behavior: 'smooth'});" class="cart-size-calc-link">
+        👉 Bấm vào đây để mở Máy tính đo chiều cao & cân nặng chi tiết
+      </a>
+    </div>
+  `;
 
   if (totalElem) totalElem.textContent = formatMoney(grandTotal);
   if (discountElem) discountElem.textContent = discountNote;
@@ -1432,6 +1494,33 @@ function proceedToCheckout() {
    FAST CHECKOUT MODAL HANDLERS
    =================================================================== */
 let currentPaymentMethod = 'COD';
+
+function populateQuickOrderItems() {
+  const listElem = document.getElementById('quickOrderItemsList');
+  if (listElem) {
+    listElem.innerHTML = cartItems.map((item, idx) => `
+      <div style="display: flex; gap: 10px; align-items: center; background: #FFFFFF; padding: 10px 12px; border-radius: 8px; border: 1px solid #E4E4E7;">
+        <img src="${item.image}" alt="${item.name}" style="width: 48px; height: 48px; object-fit: cover; border-radius: 6px; flex-shrink: 0;" />
+        <div style="flex-grow: 1; min-width: 0;">
+          <div style="font-size: 0.85rem; font-weight: 700; color: #18181B; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 4px;">${item.name}</div>
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;">
+            <div style="display: flex; align-items: center; gap: 4px;">
+              <span style="font-size: 0.72rem; color: #71717A; font-weight: 700;">Size:</span>
+              <div class="cart-size-pills">
+                <button type="button" class="cart-size-pill ${item.size === 'S' ? 'active' : ''}" onclick="updateCartItemSize(${idx}, 'S')" title="Size S (<62kg)">S</button>
+                <button type="button" class="cart-size-pill ${item.size === 'M' ? 'active' : ''}" onclick="updateCartItemSize(${idx}, 'M')" title="Size M (62-72kg)">M</button>
+                <button type="button" class="cart-size-pill ${item.size === 'L' ? 'active' : ''}" onclick="updateCartItemSize(${idx}, 'L')" title="Size L (73-83kg)">L</button>
+                <button type="button" class="cart-size-pill ${item.size === 'XL' ? 'active' : ''}" onclick="updateCartItemSize(${idx}, 'XL')" title="Size XL (>83kg / Có bụng)">XL</button>
+              </div>
+            </div>
+            <span style="font-size: 0.75rem; color: #71717A; font-weight: 600;">SL: <strong>x${item.qty}</strong></span>
+          </div>
+        </div>
+        <strong style="font-size: 0.88rem; color: #18181B; flex-shrink: 0;">${formatMoney(150000 * item.qty)}</strong>
+      </div>
+    `).join('');
+  }
+}
 
 function selectPaymentMethod(method) {
   currentPaymentMethod = method;
@@ -1471,21 +1560,7 @@ function openQuickOrderModal() {
   const { totalQty, subtotal, shippingFee, grandTotal } = calculateOrderTotals();
 
   // Populate items list
-  const listElem = document.getElementById('quickOrderItemsList');
-  if (listElem) {
-    listElem.innerHTML = cartItems.map(item => `
-      <div style="display: flex; gap: 10px; align-items: center; background: #FFFFFF; padding: 8px 12px; border-radius: 6px; border: 1px solid #E4E4E7;">
-        <img src="${item.image}" alt="${item.name}" style="width: 44px; height: 44px; object-fit: cover; border-radius: 6px; flex-shrink: 0;" />
-        <div style="flex-grow: 1; min-width: 0;">
-          <div style="font-size: 0.85rem; font-weight: 700; color: #18181B; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${item.name}</div>
-          <div style="font-size: 0.75rem; color: #71717A;">
-            Size: <strong style="color: #FF7A1A;">${item.size || 'L'}</strong> • Số lượng: <strong>x${item.qty}</strong>
-          </div>
-        </div>
-        <strong style="font-size: 0.88rem; color: #18181B; flex-shrink: 0;">${formatMoney(150000 * item.qty)}</strong>
-      </div>
-    `).join('');
-  }
+  populateQuickOrderItems();
 
   // Populate summary
   const qtyElem = document.getElementById('quickOrderQty');
