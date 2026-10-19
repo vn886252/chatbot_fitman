@@ -965,11 +965,11 @@ function initCatalog() {
         <div class="product-body">
           <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
             <span class="product-category">${p.categoryName}</span>
-            <span style="font-size: 0.75rem; font-weight: 700; color: #A1A1AA;">MÃ: ${p.id}</span>
+            <span class="product-code-badge" style="font-size: 0.75rem; font-weight: 700; color: #A1A1AA;">MÃ: ${p.id}</span>
           </div>
           <h3 class="product-name">${p.name}</h3>
           <p class="product-meta"><strong>Vải:</strong> ${p.fabric}</p>
-          <p style="font-size: 0.8rem; color: #71717A; line-height: 1.4; margin-bottom: 12px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">${p.desc || ''}</p>
+          <p class="product-desc" style="font-size: 0.8rem; color: #71717A; line-height: 1.4; margin-bottom: 12px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">${p.desc || ''}</p>
           <div class="product-pricing">
             <span class="price-current">${formatMoney(p.price)}</span>
             <span class="price-unit">/ cái</span>
@@ -977,7 +977,7 @@ function initCatalog() {
           <div class="product-actions">
             <button class="btn btn-primary btn-add-cart" onclick="addToCart('${p.id}')">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><line x1="3" y1="6" x2="21" y2="6"></line><path d="M16 10a4 4 0 0 1-8 0"></path></svg>
-              Chọn Mua
+              <span>Chọn Mua</span>
             </button>
             <button class="btn-zoom" title="Xem ảnh to" onclick="openLightbox('${p.image}', '${p.name.replace(/'/g, "\'")}')">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="11" y1="8" x2="11" y2="14"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>
