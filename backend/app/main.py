@@ -157,8 +157,13 @@ class ChatRequest(BaseModel):
     message: str
     messages: Optional[List[Dict[str, Any]]] = []
 
+from fastapi.responses import FileResponse
+
 @app.get("/")
 async def root():
+    index_path = os.path.join(static_dir, "index.html")
+    if os.path.exists(index_path):
+        return FileResponse(index_path)
     return {
         "brand": "FITMAN",
         "description": "Chatbot thời trang thể thao phong cách Gym CBUM",
@@ -168,6 +173,38 @@ async def root():
         "chat_test_url": "/api/chat",
         "daily_report_url": "/api/report/today"
     }
+
+@app.get("/api/info")
+async def api_info():
+    return {
+        "brand": "FITMAN",
+        "description": "Chatbot thời trang thể thao phong cách Gym CBUM",
+        "status": "online",
+        "docs": "/docs",
+        "webhook_url": "/webhook",
+        "chat_test_url": "/api/chat",
+        "daily_report_url": "/api/report/today"
+    }
+
+@app.get("/api/catalog")
+async def get_catalog():
+    """Endpoint trả về toàn bộ dữ liệu sản phẩm và chính sách giá."""
+    catalog_path = os.path.join(os.path.dirname(__file__), "data", "catalog.json")
+    new_models_path = os.path.join(os.path.dirname(__file__), "data", "new_models.json")
+    data = {}
+    if os.path.exists(catalog_path):
+        try:
+            with open(catalog_path, "r", encoding="utf-8") as f:
+                data["catalog"] = json.load(f)
+        except Exception:
+            pass
+    if os.path.exists(new_models_path):
+        try:
+            with open(new_models_path, "r", encoding="utf-8") as f:
+                data["new_models"] = json.load(f)
+        except Exception:
+            pass
+    return data
 
 @app.get("/health")
 async def health():

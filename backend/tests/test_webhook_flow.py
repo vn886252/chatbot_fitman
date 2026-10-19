@@ -18,7 +18,12 @@ class TestWebhookAndRoutes:
     def test_root_endpoint(self):
         response = client.get("/")
         assert response.status_code == 200
-        data = response.json()
+        assert "Fitman Sportswear" in response.text or "FITMAN" in response.text
+
+        # Test API info endpoint
+        api_res = client.get("/api/info")
+        assert api_res.status_code == 200
+        data = api_res.json()
         assert data["brand"] == "FITMAN"
         assert data["status"] == "online"
 
@@ -87,7 +92,7 @@ class TestWebhookAndRoutes:
 
             mock_llm.assert_awaited_once_with([], "Tôi cao 1m62 nặng 68kg mặc size gì thế shop?", customer_name="Khách hàng", sender_id="user_psid_12345")
             mock_send_text.assert_awaited_once_with("user_psid_12345", "Chào gym bro! Với chiều cao 1m62 và nặng 68kg, size chuẩn của bạn là Size L nha.")
-            mock_send_img.assert_awaited_once_with("user_psid_12345", "/static/products/bang_size.jpg")
+            mock_send_img.assert_awaited_once_with("user_psid_12345", "/static/products/bang_size.jpg", notification_type="SILENT_PUSH")
 
     def test_static_files_accessible(self):
         res_bang_size = client.get("/static/products/bang_size.jpg")
