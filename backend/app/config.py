@@ -28,5 +28,8 @@ class Settings(BaseSettings):
     TELEGRAM_CHAT_ID: str = Field(default="")
     HANDOVER_TIMEOUT_HOURS: int = Field(default=2)
     DAILY_REPORT_HOUR: int = Field(default=22)
+    BANK_BIN: str = Field(default="MB")
+    BANK_ACCOUNT_NO: str = Field(default="0901234567")
+    BANK_ACCOUNT_NAME: str = Field(default="FITMAN SPORTSWEAR")
 
 settings = Settings()

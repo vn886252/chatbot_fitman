@@ -398,33 +398,203 @@
   </section>
 
   <!-- ===================================================================
-       CUSTOM STUDIO PROMO (LỘ TRÌNH GIAI ĐOẠN 2)
+       FITMAN CUSTOM DESIGN STUDIO (XƯỞNG TỰ THIẾT KẾ ÁO CHUẨN FORM CBUM)
        =================================================================== -->
   <section class="section" id="custom-studio">
     <div class="container">
-      <div class="custom-banner">
-        <div>
-          <span class="badge badge-orange" style="margin-bottom: 14px;">FITMAN CUSTOM STUDIO • TỰ THIẾT KẾ</span>
-          <h2>Tự Thiết Kế Chiếc Áo Gym Độc Quyền Của Bạn</h2>
-          <p>
-            Bạn muốn in câu slogan riêng, logo câu lạc bộ gym, hay hình ảnh cá nhân? Trải nghiệm phòng thiết kế trực quan ngay trên điện thoại:
-          </p>
-          <div class="custom-steps">
-            <span class="step-item">1. Chọn màu áo phôi</span>
-            <span class="step-item">2. Chọn size chuẩn</span>
-            <span class="step-item">3. Chọn mẫu in / Tải ảnh lên</span>
-            <span class="step-item">4. Chọn vị trí in ngực / lưng</span>
-            <span class="step-item">5. Chốt mẫu & Trả trước</span>
+      <div class="section-header">
+        <span class="section-subtitle">XƯỞNG IN THEO YÊU CẦU • TỰ THIẾT KẾ</span>
+        <h2 class="section-title">Phòng Thiết Kế Áo Thun Gym Riêng Biệt</h2>
+        <p class="section-desc">Tự chọn màu phôi 100% Cotton 260GSM, chọn size, vị trí in và họa tiết đồ họa độc quyền. Xem trước mockup tức thì & thanh toán trước để xưởng in ngay.</p>
+      </div>
+
+      <div class="studio-wrapper">
+        <div class="studio-grid">
+          <!-- Cột Trái: Trình Trực Quan Hóa Mockup 2D Canvas / Vector -->
+          <div class="studio-stage">
+            <div class="stage-flip-controls">
+              <button class="btn-flip active" id="flipFrontBtn" onclick="switchShirtSide('front')">Mặt Trước 👕</button>
+              <button class="btn-flip" id="flipBackBtn" onclick="switchShirtSide('back')">Mặt Sau 🔄</button>
+            </div>
+
+            <div class="shirt-mockup-box" id="shirtMockupBox">
+              <!-- SVG T-Shirt Vector -->
+              <div class="shirt-svg-container">
+                <svg viewBox="0 0 500 500" class="shirt-vector" id="shirtVector">
+                  <defs>
+                    <radialGradient id="shirtShading" cx="50%" cy="40%" r="60%">
+                      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.18" />
+                      <stop offset="85%" stop-color="#000000" stop-opacity="0.08" />
+                      <stop offset="100%" stop-color="#000000" stop-opacity="0.22" />
+                    </radialGradient>
+                  </defs>
+                  <!-- Body and Sleeves of Oversize Tee -->
+                  <path id="shirtBaseShape" d="M165,70 C190,95 310,95 335,70 L460,150 L405,250 L345,215 L350,440 L150,440 L155,215 L95,250 L40,150 Z" fill="#FFFFFF" stroke="#D4D4D8" stroke-width="2" />
+                  <!-- Collar Curve -->
+                  <path id="shirtCollar" d="M165,70 C205,105 295,105 335,70 C310,90 190,90 165,70 Z" fill="#E4E4E7" stroke="#A1A1AA" stroke-width="1.5" />
+                  <!-- Soft Shading Overlay -->
+                  <path d="M165,70 C190,95 310,95 335,70 L460,150 L405,250 L345,215 L350,440 L150,440 L155,215 L95,250 L40,150 Z" fill="url(#shirtShading)" />
+                </svg>
+              </div>
+
+              <!-- Graphic Layer Positioned on Shirt -->
+              <div class="print-overlay-zone placement-center-chest" id="printOverlay">
+                <img id="overlayArtworkImg" src="/static/brand/logo_icon.png" alt="Mẫu in xem trước" />
+              </div>
+            </div>
+
+            <div class="stage-badge">
+              <span>Đang xem:</span>
+              <strong id="stageViewingText" class="text-orange">Mặt Trước • Giữa ngực</strong>
+            </div>
           </div>
-          <div style="display: flex; gap: 14px; flex-wrap: wrap;">
-            <a href="https://m.me/fitmansportswear?text=Tôi%20muốn%20tự%20thiết%20kế%20in%20áo%20theo%20yêu%20cầu" target="_blank" class="btn btn-primary">
-              <span>Đăng Ký Đặt In Theo Yêu Cầu</span>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
-            </a>
+
+          <!-- Cột Phải: Bảng Điều Khiển Tùy Biến 5 Bước -->
+          <div class="studio-controls">
+            <!-- Bước 1: Chọn màu áo -->
+            <div class="control-step">
+              <div class="control-step-title">
+                <span class="step-num">1</span>
+                <span>Chọn Màu Áo Phôi (Cotton 260GSM):</span>
+              </div>
+              <div class="color-swatches-grid">
+                <div class="swatch-item active" data-color="#FFFFFF" data-name="Trắng Tinh" data-border="#D4D4D8" onclick="selectShirtColor('#FFFFFF', 'Trắng Tinh', '#D4D4D8', this)">
+                  <span class="swatch-dot" style="background: #FFFFFF;"></span>
+                  <span>Trắng Tinh</span>
+                </div>
+                <div class="swatch-item" data-color="#18181B" data-name="Đen CBUM" data-border="#000000" onclick="selectShirtColor('#18181B', 'Đen CBUM', '#000000', this)">
+                  <span class="swatch-dot" style="background: #18181B;"></span>
+                  <span>Đen CBUM</span>
+                </div>
+                <div class="swatch-item" data-color="#F3EEEA" data-name="Kem Cát / Beige" data-border="#DDD6CE" onclick="selectShirtColor('#F3EEEA', 'Kem Cát', '#DDD6CE', this)">
+                  <span class="swatch-dot" style="background: #F3EEEA;"></span>
+                  <span>Kem Cát</span>
+                </div>
+                <div class="swatch-item" data-color="#534B3C" data-name="Nâu Khaki" data-border="#3E382C" onclick="selectShirtColor('#534B3C', 'Nâu Khaki', '#3E382C', this)">
+                  <span class="swatch-dot" style="background: #534B3C;"></span>
+                  <span>Nâu Khaki</span>
+                </div>
+                <div class="swatch-item" data-color="#71717A" data-name="Xám Chì" data-border="#52525B" onclick="selectShirtColor('#71717A', 'Xám Chì', '#52525B', this)">
+                  <span class="swatch-dot" style="background: #71717A;"></span>
+                  <span>Xám Chì</span>
+                </div>
+                <div class="swatch-item" data-color="#3B443B" data-name="Xanh Rêu Olive" data-border="#282F28" onclick="selectShirtColor('#3B443B', 'Xanh Rêu', '#282F28', this)">
+                  <span class="swatch-dot" style="background: #3B443B;"></span>
+                  <span>Xanh Rêu</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Bước 2: Chọn size -->
+            <div class="control-step">
+              <div class="control-step-title">
+                <span class="step-num">2</span>
+                <span>Chọn Kích Thước (Size Áo):</span>
+              </div>
+              <div class="size-swatches-grid">
+                <div class="size-btn" data-size="S" onclick="selectStudioSize('S', this)">
+                  <span class="size-name">S</span>
+                  <span class="size-weight">&lt; 62kg</span>
+                </div>
+                <div class="size-btn active" data-size="M" onclick="selectStudioSize('M', this)">
+                  <span class="size-name">M</span>
+                  <span class="size-weight">62 - 72kg</span>
+                </div>
+                <div class="size-btn" data-size="L" onclick="selectStudioSize('L', this)">
+                  <span class="size-name">L</span>
+                  <span class="size-weight">72 - 82kg</span>
+                </div>
+                <div class="size-btn" data-size="XL" onclick="selectStudioSize('XL', this)">
+                  <span class="size-name">XL</span>
+                  <span class="size-weight">82 - 95kg</span>
+                </div>
+                <div class="size-btn" data-size="2XL" onclick="selectStudioSize('2XL', this)">
+                  <span class="size-name">2XL</span>
+                  <span class="size-weight">&gt; 95kg</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Bước 3: Chọn mẫu in -->
+            <div class="control-step">
+              <div class="control-step-title">
+                <span class="step-num">3</span>
+                <span>Chọn Mẫu In Đồ Họa / Tải Hình Lên:</span>
+              </div>
+              <div class="artwork-tabs">
+                <button class="art-tab-btn active" id="tabLibraryBtn" onclick="switchArtTab('library')">Thư Viện Fitman</button>
+                <button class="art-tab-btn" id="tabUploadBtn" onclick="switchArtTab('upload')">Tải Ảnh Của Bạn ⬆️</button>
+              </div>
+
+              <div id="artLibraryBox" class="artwork-library-grid">
+                <div class="art-card active" onclick="selectStudioArtwork('/static/brand/logo_icon.png', 'Fitman Tạ Cam', this)">
+                  <img src="/static/brand/logo_icon.png" alt="Fitman Dumbbell" />
+                  <span class="art-name">Tạ Cam Fitman</span>
+                </div>
+                <div class="art-card" onclick="selectStudioArtwork('/static/brand/logo_horizontal_light.png', 'FITMAN Chữ Đen', this)">
+                  <img src="/static/brand/logo_horizontal_light.png" alt="FITMAN Text" />
+                  <span class="art-name">FITMAN Text</span>
+                </div>
+                <div class="art-card" onclick="selectStudioArtwork('/static/products/mau_moi_1.png', 'CBUM Olympia Art', this)">
+                  <img src="/static/products/mau_moi_1.png" alt="CBUM Graphic" />
+                  <span class="art-name">CBUM Graphic</span>
+                </div>
+                <div class="art-card" onclick="selectStudioArtwork('/static/products/mau_moi_2.png', 'Wolves Punk Art', this)">
+                  <img src="/static/products/mau_moi_2.png" alt="Wolves Art" />
+                  <span class="art-name">Wolves Street</span>
+                </div>
+              </div>
+
+              <div id="artUploadBox" style="display: none;">
+                <label class="upload-box">
+                  <input type="file" id="artFileInput" accept="image/png, image/jpeg, image/webp" style="display: none;" onchange="handleCustomFileUpload(event)" />
+                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2" style="margin: 0 auto 8px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                  <p style="font-size: 0.9rem; font-weight: 700; color: var(--dark);">Nhấn để chọn file ảnh từ máy</p>
+                  <span style="font-size: 0.78rem; color: var(--text-sub);">Hỗ trợ PNG trong suốt, JPG (Dưới 10MB)</span>
+                </label>
+              </div>
+            </div>
+
+            <!-- Bước 4: Chọn vị trí in -->
+            <div class="control-step">
+              <div class="control-step-title">
+                <span class="step-num">4</span>
+                <span>Chọn Vị Trí In:</span>
+              </div>
+              <div class="placement-grid">
+                <button class="place-btn" data-placement="chest-left" data-side="front" onclick="selectPlacement('placement-chest-left', 'front', 'Ngực Trái', this)">
+                  📍 Ngực Trái (Nhỏ)
+                </button>
+                <button class="place-btn active" data-placement="center-chest" data-side="front" onclick="selectPlacement('placement-center-chest', 'front', 'Giữa Ngực', this)">
+                  📍 Giữa Ngực (Vừa)
+                </button>
+                <button class="place-btn" data-placement="full-front" data-side="front" onclick="selectPlacement('placement-full-front', 'front', 'Toàn Ngực (Lớn)', this)">
+                  📍 Toàn Ngực (Đại)
+                </button>
+                <button class="place-btn" data-placement="full-back" data-side="back" onclick="selectPlacement('placement-full-back', 'back', 'Lưng To Bản', this)">
+                  📍 Lưng To Bản (CBUM)
+                </button>
+                <button class="place-btn" data-placement="nape" data-side="back" onclick="selectPlacement('placement-nape', 'back', 'Gáy Áo', this)">
+                  📍 Gáy Áo (Mini)
+                </button>
+                <button class="place-btn" data-placement="sleeve-left" data-side="front" onclick="selectPlacement('placement-sleeve-left', 'front', 'Bắp Tay Trái', this)">
+                  📍 Tay Áo Trái
+                </button>
+              </div>
+            </div>
+
+            <!-- Bước 5: Chốt mẫu & Thanh toán -->
+            <div class="studio-checkout-box">
+              <div class="checkout-price-info">
+                <span>Trọn gói (Áo phôi 260GSM + Công in):</span>
+                <strong id="customOrderPrice">190.000đ</strong>
+              </div>
+              <button class="btn btn-primary" onclick="openVietQRModal()" style="padding: 12px 24px; font-weight: 700;">
+                <span>Chốt Mẫu & Đặt Cọc (VietQR)</span>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+              </button>
+            </div>
           </div>
-        </div>
-        <div style="text-align: center;">
-          <img src="/static/brand/logo_horizontal_gray.png" alt="Xưởng in Fitman Custom Studio" style="max-width: 280px; margin: 0 auto; filter: drop-shadow(0 10px 20px rgba(0,0,0,0.4));" />
         </div>
       </div>
     </div>
@@ -560,6 +730,64 @@
       </button>
     </div>
   </aside>
+
+  <!-- ===================================================================
+       VIETQR PREPAYMENT MODAL (THANH TOÁN TRƯỚC ĐƠN IN THEO YÊU CẦU)
+       =================================================================== -->
+  <div id="vietqrModal" class="vietqr-modal" role="dialog" aria-modal="true" aria-label="Thanh toán trước VietQR">
+    <div class="vietqr-card">
+      <button onclick="closeVietQRModal()" style="position: absolute; top: 16px; right: 16px; font-size: 1.6rem; color: #71717A; cursor: pointer;">&times;</button>
+      <div class="vietqr-header">
+        <span class="badge badge-orange" style="margin-bottom: 8px;">BẢO ĐẢM ĐƠN HÀNG IN RIÊNG</span>
+        <h3>Xác Nhận & Thanh Toán Đặt Cọc</h3>
+        <p style="font-size: 0.88rem; color: var(--text-sub); margin-top: 4px;">Quét mã VietQR để thanh toán trước cho xưởng in Fitman tiến hành may in ngay.</p>
+      </div>
+
+      <div class="vietqr-body-grid">
+        <div class="qr-image-wrapper">
+          <img id="vietqrImage" src="https://img.vietqr.io/image/MB-0901234567-compact2.png?amount=190000&addInfo=FITMAN%20CUST&accountName=FITMAN%20SPORTSWEAR" alt="Mã thanh toán VietQR Fitman" />
+          <span style="font-size: 0.75rem; color: #71717A; margin-top: 6px; display: block;">Quét bằng app mọi ngân hàng hoặc MoMo</span>
+        </div>
+
+        <div class="bank-info-box">
+          <div class="bank-row">
+            <span>Ngân hàng:</span>
+            <strong>MBBank (Quân Đội)</strong>
+          </div>
+          <div class="bank-row">
+            <span>Số tài khoản:</span>
+            <strong id="bankAccNo">0901234567</strong>
+          </div>
+          <div class="bank-row">
+            <span>Chủ tài khoản:</span>
+            <strong>FITMAN SPORTSWEAR</strong>
+          </div>
+          <div class="bank-row">
+            <span>Số tiền:</span>
+            <strong id="bankAmount" class="text-orange" style="font-size: 1.15rem;">190.000đ</strong>
+          </div>
+          <div class="bank-row">
+            <span>Nội dung CK:</span>
+            <strong id="bankMemo" style="color: var(--primary);">FITMAN CUST</strong>
+          </div>
+        </div>
+      </div>
+
+      <form id="customOrderForm" class="customer-form" onsubmit="submitCustomOrder(event)">
+        <div style="font-size: 0.9rem; font-weight: 700; color: var(--dark); margin-top: 8px;">Thông Tin Giao Nhận Hàng:</div>
+        <input type="text" id="custNameInput" class="form-input" placeholder="Họ và tên của bạn *" required />
+        <input type="tel" id="custPhoneInput" class="form-input" placeholder="Số điện thoại nhận hàng *" pattern="[0-9]{10,11}" required />
+        <input type="text" id="custAddressInput" class="form-input" placeholder="Địa chỉ giao hàng cụ thể (Số nhà, đường, phường, quận...) *" required />
+        <input type="text" id="custNoteInput" class="form-input" placeholder="Ghi chú thêm cho xưởng in (tùy chọn)" />
+
+        <div id="orderStatusMessage" style="display: none; padding: 12px; border-radius: 8px; font-size: 0.9rem; text-align: center;"></div>
+
+        <button type="submit" id="submitOrderBtn" class="btn btn-primary" style="width: 100%; padding: 14px; font-weight: 700; font-size: 1rem; margin-top: 8px;">
+          ✅ Tôi Đã Chuyển Khoản & Xác Nhận Đơn Hàng
+        </button>
+      </form>
+    </div>
+  </div>
 
   <!-- Script -->
   <script src="/static/js/app.js"></script>

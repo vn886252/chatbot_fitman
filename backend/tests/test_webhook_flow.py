@@ -199,3 +199,35 @@ class TestWebhookAndRoutes:
             assert res2.status_code == 200
             assert mock_send_text.await_count == 1  # Không gửi thêm tin nhắn lỗi thứ 2!
 
+    def test_vietqr_endpoint(self):
+        res = client.get("/api/payment/vietqr?amount=190000&memo=FITMAN%20TEST")
+        assert res.status_code == 200
+        data = res.json()
+        assert "qr_image_url" in data
+        assert "https://img.vietqr.io/image/" in data["qr_image_url"]
+        assert data["amount"] == 190000
+        assert data["memo"] == "FITMAN TEST"
+
+    @pytest.mark.anyio
+    async def test_custom_order_endpoint(self):
+        with patch("app.services.telegram_service.send_new_order_notification", new_callable=AsyncMock) as mock_tg:
+            payload = {
+                "ten_khach_hang": "Test Customer",
+                "so_dien_thoai": "0987654321",
+                "dia_chi": "123 Test Street, HCM",
+                "mau_ao": "Trắng Tinh",
+                "size_ao": "L",
+                "vi_tri_in": "Mặt Trước - Giữa Ngực",
+                "ten_mau_in": "Fitman Tạ Cam",
+                "anh_in_url": "/static/brand/logo_icon.png",
+                "tong_tien": 190000,
+                "ghi_chu": "[Mã CK: FITMAN1234]"
+            }
+            res = client.post("/api/custom-order", json=payload)
+            assert res.status_code == 200
+            data = res.json()
+            assert data["success"] is True
+            assert "order_id" in data
+            assert mock_tg.await_count == 1
+
+

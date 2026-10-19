@@ -206,6 +206,80 @@ async def get_catalog():
             pass
     return data
 
+class CustomOrderRequest(BaseModel):
+    ten_khach_hang: str = "Khách hàng"
+    so_dien_thoai: str
+    dia_chi: str
+    mau_ao: str = "Trắng"
+    size_ao: str = "M"
+    vi_tri_in: str = "Giữa ngực"
+    ten_mau_in: str = "Logo Fitman Signature"
+    anh_in_url: Optional[str] = ""
+    tong_tien: int = 190000
+    ghi_chu: Optional[str] = ""
+
+@app.post("/api/custom-order")
+async def create_custom_order(order_req: CustomOrderRequest):
+    """
+    Tiếp nhận đơn hàng tự thiết kế (Custom Studio) từ website.
+    Lưu vào orders.json và gửi thông báo đơn hàng kèm chi tiết thiết kế qua Telegram tới chủ shop.
+    """
+    from app.services.order_service import save_order
+    from app.services.telegram_service import send_new_order_notification
+
+    chi_tiet_mon = f"Áo tự thiết kế ({order_req.mau_ao}, Size {order_req.size_ao}, In {order_req.vi_tri_in}: {order_req.ten_mau_in})"
+    if order_req.ghi_chu:
+        chi_tiet_mon += f" [Ghi chú: {order_req.ghi_chu}]"
+
+    order_payload = {
+        "ten_khach_hang": order_req.ten_khach_hang,
+        "so_dien_thoai": order_req.so_dien_thoai,
+        "dia_chi": order_req.dia_chi,
+        "so_luong": 1,
+        "tong_tien": order_req.tong_tien,
+        "danh_sach_mon": [chi_tiet_mon],
+        "loai_don": "custom_design",
+        "custom_details": {
+            "mau_ao": order_req.mau_ao,
+            "size_ao": order_req.size_ao,
+            "vi_tri_in": order_req.vi_tri_in,
+            "ten_mau_in": order_req.ten_mau_in,
+            "anh_in_url": order_req.anh_in_url
+        }
+    }
+
+    try:
+        saved_order = save_order(order_payload)
+        await send_new_order_notification(saved_order)
+        return {
+            "success": True,
+            "order_id": saved_order.get("id"),
+            "order_number": saved_order.get("order_number_today"),
+            "message": "Đơn hàng tự thiết kế đã được ghi nhận thành công! Shop sẽ liên hệ xác nhận và tiến hành in ngay."
+        }
+    except Exception as e:
+        logger.error(f"Error creating custom order: {e}")
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
+@app.get("/api/payment/vietqr")
+async def get_vietqr_info(amount: int = 190000, memo: str = "FITMAN CUST"):
+    """Sinh URL mã QR VietQR tự động để thanh toán trước đơn in theo yêu cầu."""
+    bank_bin = getattr(settings, "BANK_BIN", "MB")
+    acc_no = getattr(settings, "BANK_ACCOUNT_NO", "0901234567")
+    acc_name = getattr(settings, "BANK_ACCOUNT_NAME", "FITMAN SPORTSWEAR")
+    qr_url = f"https://img.vietqr.io/image/{bank_bin}-{acc_no}-compact2.png?amount={amount}&addInfo={memo}&accountName={acc_name}"
+    return {
+        "bank_bin": bank_bin,
+        "account_no": acc_no,
+        "account_name": acc_name,
+        "amount": amount,
+        "memo": memo,
+        "qr_image_url": qr_url
+    }
+
 @app.get("/health")
 async def health():
     return {

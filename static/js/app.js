@@ -425,3 +425,269 @@ function proceedToCheckout() {
   const fbUrl = `https://m.me/fitmansportswear?text=${encodeURIComponent('Chào Fitman, mình muốn đặt các món sau: ' + summary)}`;
   window.open(fbUrl, '_blank');
 }
+
+/* ===================================================================
+   7. CUSTOM DESIGN STUDIO LOGIC
+   =================================================================== */
+let studioState = {
+  color: '#FFFFFF',
+  colorName: 'Trắng Tinh',
+  colorBorder: '#D4D4D8',
+  size: 'M',
+  side: 'front', // 'front' | 'back'
+  artUrl: '/static/brand/logo_icon.png',
+  artName: 'Tạ Cam Fitman',
+  placementClass: 'placement-center-chest',
+  placementName: 'Giữa Ngực',
+  price: 190000,
+  orderCode: 'FITMAN' + Math.floor(1000 + Math.random() * 9000)
+};
+
+function selectShirtColor(hex, name, border, elem) {
+  studioState.color = hex;
+  studioState.colorName = name;
+  studioState.colorBorder = border;
+
+  // Cập nhật SVG path
+  const baseShape = document.getElementById('shirtBaseShape');
+  const collar = document.getElementById('shirtCollar');
+  if (baseShape) {
+    baseShape.setAttribute('fill', hex);
+    baseShape.setAttribute('stroke', border);
+  }
+  if (collar) {
+    if (hex === '#18181B' || hex === '#534B3C' || hex === '#3B443B' || hex === '#71717A') {
+      collar.setAttribute('fill', hex);
+      collar.setAttribute('stroke', border);
+    } else {
+      collar.setAttribute('fill', '#E4E4E7');
+      collar.setAttribute('stroke', '#A1A1AA');
+    }
+  }
+
+  // Active class
+  document.querySelectorAll('.swatch-item').forEach(el => el.classList.remove('active'));
+  if (elem) elem.classList.add('active');
+}
+
+function switchShirtSide(side) {
+  studioState.side = side;
+  const frontBtn = document.getElementById('flipFrontBtn');
+  const backBtn = document.getElementById('flipBackBtn');
+  const collar = document.getElementById('shirtCollar');
+
+  if (side === 'front') {
+    frontBtn?.classList.add('active');
+    backBtn?.classList.remove('active');
+    if (collar) collar.style.display = 'block';
+  } else {
+    backBtn?.classList.add('active');
+    frontBtn?.classList.remove('active');
+    if (collar) collar.style.display = 'none'; // Mặt sau áo
+  }
+
+  updateStageViewingText();
+}
+
+function selectStudioSize(size, elem) {
+  studioState.size = size;
+  document.querySelectorAll('.size-btn').forEach(el => el.classList.remove('active'));
+  if (elem) elem.classList.add('active');
+}
+
+function switchArtTab(tab) {
+  const libBtn = document.getElementById('tabLibraryBtn');
+  const upBtn = document.getElementById('tabUploadBtn');
+  const libBox = document.getElementById('artLibraryBox');
+  const upBox = document.getElementById('artUploadBox');
+
+  if (tab === 'library') {
+    libBtn?.classList.add('active');
+    upBtn?.classList.remove('active');
+    if (libBox) libBox.style.display = 'grid';
+    if (upBox) upBox.style.display = 'none';
+  } else {
+    upBtn?.classList.add('active');
+    libBtn?.classList.remove('active');
+    if (libBox) libBox.style.display = 'none';
+    if (upBox) upBox.style.display = 'block';
+  }
+}
+
+function selectStudioArtwork(url, name, elem) {
+  studioState.artUrl = url;
+  studioState.artName = name;
+  const overlayImg = document.getElementById('overlayArtworkImg');
+  if (overlayImg) {
+    overlayImg.src = url;
+    overlayImg.alt = name;
+  }
+  document.querySelectorAll('.art-card').forEach(el => el.classList.remove('active'));
+  if (elem) elem.classList.add('active');
+}
+
+function handleCustomFileUpload(event) {
+  const file = event.target.files?.[0];
+  if (!file) return;
+
+  if (file.size > 10 * 1024 * 1024) {
+    alert("Vui lòng tải file ảnh dưới 10MB!");
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const dataUrl = e.target.result;
+    studioState.artUrl = dataUrl;
+    studioState.artName = `Custom: ${file.name}`;
+    const overlayImg = document.getElementById('overlayArtworkImg');
+    if (overlayImg) {
+      overlayImg.src = dataUrl;
+      overlayImg.alt = file.name;
+    }
+  };
+  reader.readAsDataURL(file);
+}
+
+function selectPlacement(placementClass, side, name, elem) {
+  studioState.placementClass = placementClass;
+  studioState.placementName = name;
+
+  if (side !== studioState.side) {
+    switchShirtSide(side);
+  }
+
+  const overlay = document.getElementById('printOverlay');
+  if (overlay) {
+    overlay.className = 'print-overlay-zone ' + placementClass;
+  }
+
+  document.querySelectorAll('.place-btn').forEach(el => el.classList.remove('active'));
+  if (elem) elem.classList.add('active');
+
+  updateStageViewingText();
+}
+
+function updateStageViewingText() {
+  const textElem = document.getElementById('stageViewingText');
+  if (textElem) {
+    const sideStr = studioState.side === 'front' ? 'Mặt Trước' : 'Mặt Sau';
+    textElem.textContent = `${sideStr} • ${studioState.placementName}`;
+  }
+}
+
+async function openVietQRModal() {
+  studioState.orderCode = 'FITMAN' + Math.floor(1000 + Math.random() * 9000);
+  const modal = document.getElementById('vietqrModal');
+  const qrImg = document.getElementById('vietqrImage');
+  const bankAccNo = document.getElementById('bankAccNo');
+  const bankAmount = document.getElementById('bankAmount');
+  const bankMemo = document.getElementById('bankMemo');
+
+  try {
+    const res = await fetch(`/api/payment/vietqr?amount=${studioState.price}&memo=${encodeURIComponent(studioState.orderCode)}`);
+    if (res.ok) {
+      const data = await res.json();
+      if (qrImg) qrImg.src = data.qr_image_url;
+      if (bankAccNo) bankAccNo.textContent = data.account_no;
+      if (bankAmount) bankAmount.textContent = formatMoney(data.amount);
+      if (bankMemo) bankMemo.textContent = data.memo;
+    }
+  } catch (err) {
+    console.error("Lỗi lấy thông tin VietQR:", err);
+  }
+
+  if (modal) {
+    modal.classList.add('active');
+    document.body.style.overflow = 'hidden';
+  }
+}
+
+function closeVietQRModal() {
+  const modal = document.getElementById('vietqrModal');
+  if (modal) {
+    modal.classList.remove('active');
+    document.body.style.overflow = '';
+  }
+}
+
+async function submitCustomOrder(event) {
+  event.preventDefault();
+  const name = document.getElementById('custNameInput')?.value.trim();
+  const phone = document.getElementById('custPhoneInput')?.value.trim();
+  const address = document.getElementById('custAddressInput')?.value.trim();
+  const note = document.getElementById('custNoteInput')?.value.trim();
+  const statusMsg = document.getElementById('orderStatusMessage');
+  const submitBtn = document.getElementById('submitOrderBtn');
+
+  if (!name || !phone || !address) {
+    alert("Vui lòng điền đầy đủ họ tên, số điện thoại và địa chỉ nhận hàng!");
+    return;
+  }
+
+  const payload = {
+    ten_khach_hang: name,
+    so_dien_thoai: phone,
+    dia_chi: address,
+    mau_ao: studioState.colorName,
+    size_ao: studioState.size,
+    vi_tri_in: `${studioState.side === 'front' ? 'Mặt Trước' : 'Mặt Sau'} - ${studioState.placementName}`,
+    ten_mau_in: studioState.artName,
+    anh_in_url: studioState.artUrl.startsWith('data:') ? '(Ảnh khách tải lên)' : studioState.artUrl,
+    tong_tien: studioState.price,
+    ghi_chu: `[Mã CK: ${studioState.orderCode}] ${note}`
+  };
+
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Đang xử lý đơn hàng...';
+  }
+
+  try {
+    const res = await fetch('/api/custom-order', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const result = await res.json();
+
+    if (statusMsg) {
+      statusMsg.style.display = 'block';
+      if (result.success) {
+        statusMsg.style.background = '#ECFDF5';
+        statusMsg.style.color = '#065F46';
+        statusMsg.style.border = '1px solid #A7F3D0';
+        statusMsg.innerHTML = `
+          <strong>🎉 Đã nhận đơn hàng thành công! (Mã #${result.order_number || result.order_id})</strong><br/>
+          Cảm ơn bạn! Xưởng in Fitman sẽ kiểm tra chuyển khoản và liên hệ qua số <strong>${phone}</strong> để xác nhận và in áo ngay!
+        `;
+        if (submitBtn) {
+          submitBtn.textContent = '✅ Đơn Hàng Đã Gửi Thành Công';
+          submitBtn.style.background = '#10B981';
+        }
+      } else {
+        statusMsg.style.background = '#FEF2F2';
+        statusMsg.style.color = '#991B1B';
+        statusMsg.style.border = '1px solid #FECACA';
+        statusMsg.textContent = 'Có lỗi xảy ra: ' + (result.error || 'Vui lòng thử lại sau.');
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.textContent = '✅ Tôi Đã Chuyển Khoản & Xác Nhận Đơn Hàng';
+        }
+      }
+    }
+  } catch (err) {
+    console.error(err);
+    if (statusMsg) {
+      statusMsg.style.display = 'block';
+      statusMsg.style.background = '#FEF2F2';
+      statusMsg.style.color = '#991B1B';
+      statusMsg.textContent = 'Lỗi kết nối máy chủ. Vui lòng thử lại hoặc liên hệ hotline.';
+    }
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.textContent = '✅ Tôi Đã Chuyển Khoản & Xác Nhận Đơn Hàng';
+    }
+  }
+}
+
