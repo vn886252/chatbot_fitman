@@ -36,3 +36,10 @@ def test_system_prompt_availability_rule():
     assert "LUÔN LUÔN LÀ CÒN HÀNG" in prompt
     assert "TUYỆT ĐỐI CẤM GỌI TOOL `tim_anh_san_pham`" in prompt
 
+
+
+def test_system_prompt_initial_two_models_rule():
+    prompt = get_system_prompt()
+    assert "QUYẾT ĐỊNH 4" in prompt
+    assert "CHỈ GỬI ĐÚNG 2 ẢNH MÃ MỚI THÔI" in prompt
+    assert "còn mẫu nào nữa shop" in prompt or "thêm mẫu" in prompt

@@ -153,3 +153,74 @@ def test_clean_verbose_intro():
 
 
 
+
+
+def test_tim_anh_san_pham_mau_ao_only_two():
+    from app.tools.business_rules import tim_anh_san_pham
+    for q in ["mẫu áo", "cho xem mẫu", "xem mẫu", "gửi mẫu", "có mẫu nào", "áo"]:
+        res = tim_anh_san_pham(q)
+        assert res["found"] is True
+        assert len(res["image_urls"]) == 2
+        assert "/static/products/mau_moi_1.png" in res["image_urls"]
+        assert "/static/products/mau_moi_2.png" in res["image_urls"]
+        assert "/static/products/nhom_1.jpg" not in res["image_urls"]
+
+
+def test_tim_anh_san_pham_more_models():
+    from app.tools.business_rules import tim_anh_san_pham
+    for q in ["còn mẫu nào nữa shop", "thêm mẫu", "muốn xem thêm mẫu", "gửi thêm mẫu", "xem thêm mẫu"]:
+        res = tim_anh_san_pham(q)
+        assert res["found"] is True
+        assert "/static/products/nhom_1.jpg" in res["image_urls"]
+        assert len(res["image_urls"]) >= 5
+
+
+@pytest.mark.asyncio
+async def test_generate_response_only_two_models_on_initial_query():
+    from app.services.llm_service import generate_response
+    from unittest.mock import AsyncMock, patch, MagicMock
+
+    mock_resp = MagicMock()
+    mock_resp.raise_for_status = MagicMock()
+    mock_resp.json.return_value = {
+        "choices": [
+            {
+                "message": {
+                    "role": "assistant",
+                    "content": "Dạ em gửi anh xem 2 mẫu mới nhất bên em nha! Anh cho em xin chiều cao cân nặng để em tư vấn size cho mình nhé! 💪"
+                }
+            }
+        ]
+    }
+
+    with patch("httpx.AsyncClient.post", new_callable=AsyncMock) as mock_post:
+        mock_post.return_value = mock_resp
+        res = await generate_response([], "cho mình xem mẫu áo với shop")
+        assert len(res["suggested_images"]) == 2
+        assert "/static/products/mau_moi_1.png" in res["suggested_images"]
+        assert "/static/products/mau_moi_2.png" in res["suggested_images"]
+
+
+@pytest.mark.asyncio
+async def test_generate_response_more_models_on_explicit_request():
+    from app.services.llm_service import generate_response
+    from unittest.mock import AsyncMock, patch, MagicMock
+
+    mock_resp = MagicMock()
+    mock_resp.raise_for_status = MagicMock()
+    mock_resp.json.return_value = {
+        "choices": [
+            {
+                "message": {
+                    "role": "assistant",
+                    "content": "Dạ em gửi anh xem thêm các mẫu khác bên em nha!"
+                }
+            }
+        ]
+    }
+
+    with patch("httpx.AsyncClient.post", new_callable=AsyncMock) as mock_post:
+        mock_post.return_value = mock_resp
+        res = await generate_response([], "còn mẫu nào nữa shop ơi")
+        assert "/static/products/nhom_1.jpg" in res["suggested_images"]
+        assert len(res["suggested_images"]) >= 5

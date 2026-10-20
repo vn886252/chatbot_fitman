@@ -337,60 +337,64 @@ async def generate_response(
     has_digits = bool(re.search(r'\d+', user_message))
     is_ordering_with_codes = has_order_verb and has_digits
 
+    # 1. Khách hỏi xem THÊM MẪU / CÒN MẪU NÀO NỮA / MẪU KHÁC / MẪU CŨ / BỘ SƯU TẬP TRƯỚC
+    # -> CHỈ LÚC NÀY MỚI GỬI NHỮNG ẢNH CÒN LẠI!
+    is_more_models_query = any(k in lower_user for k in [
+        "còn mẫu nào nữa", "con mau nao nua", "còn mẫu nào ko", "con mau nao ko", "còn mẫu ko", "con mau ko",
+        "thêm mẫu", "them mau", "xem thêm mẫu", "xem them mau", "muốn xem thêm mẫu", "muon xem them mau",
+        "gửi thêm mẫu", "gui them mau", "cho thêm mẫu", "cho them mau", "còn mẫu nào", "con mau nao",
+        "mẫu khác", "mau khac", "mẫu nào khác", "mau nao khac", "mẫu khác đâu", "xem mẫu khác",
+        "mẫu cũ", "mau cu", "mẫu trước", "mau truoc", "bộ sưu tập cũ", "bo suu tap cu"
+    ])
+
     if is_asking_availability and not is_explicit_view_request:
         suggested_images = []
-    elif is_ordering_with_codes or ("tim_anh_san_pham" in tool_calls_made and suggested_images):
-        pass
-    else:
-        # Nếu hỏi xem mẫu mới (tối đa 6 mẫu mới nhất)
-        is_new_query = (
-            any(k in lower_user for k in [
-                "mẫu mới", "mau moi", "mẫu áo mới", "mau ao moi", "mẫu quần mới", "mau quan moi",
-                "áo mới", "ao moi", "quần mới", "quan moi", "hàng mới", "hang moi",
-                "mới về", "moi ve", "mới nhất", "moi nhat", "2026", "bộ sưu tập mới"
-            ])
-            or (bool(re.search(r'\b(mới|moi|new)\b', lower_user)) and not bool(re.search(r'\bnew_\d+\b', lower_user)))
-        )
-        if is_new_query:
-            try:
-                from app.services.new_models_service import get_new_models
-                new_m = get_new_models()
-                for m in new_m:
-                    img = m.get("image_url")
-                    if img and img not in suggested_images:
-                        suggested_images.append(img)
-            except Exception:
-                pass
-            if not suggested_images:
-                suggested_images = ["/static/products/mau_moi_1.png", "/static/products/mau_moi_2.png"]
-
-        # Nếu hỏi xem mẫu khác / mẫu cũ
-        elif any(k in lower_user for k in ["mẫu khác", "mau khac", "mẫu nào khác", "mau nao khac", "mẫu khác đâu", "xem mẫu khác", "mẫu cũ", "mau cu", "mẫu trước", "mau truoc"]):
-            for img in ALL_ANH_AO:
-                if img not in suggested_images:
+    elif is_more_models_query:
+        # Khách hỏi thêm mẫu -> Gửi các ảnh còn lại (album áo và mẫu cũ)
+        for img in ALL_ANH_AO:
+            if img not in suggested_images:
+                suggested_images.append(img)
+        try:
+            from app.services.new_models_service import get_old_models
+            for m in get_old_models():
+                img = m.get("image_url")
+                if img and img not in suggested_images:
                     suggested_images.append(img)
-            try:
-                from app.services.new_models_service import get_old_models
-                for m in get_old_models():
-                    img = m.get("image_url")
-                    if img and img not in suggested_images:
-                        suggested_images.append(img)
-            except Exception:
-                pass
-
+        except Exception:
+            pass
+    elif is_ordering_with_codes or ("tim_anh_san_pham" in tool_calls_made and suggested_images):
+        # Nếu khách mới chat hỏi mẫu chung chung, giới hạn đúng 2 ảnh mẫu mới
+        is_general_model_query = any(k in lower_user for k in [
+            "cho xem mẫu", "xem mẫu", "mẫu đâu", "cho xem mau", "xem mau", "sản phẩm", "san pham",
+            "xem ảnh áo", "ảnh áo", "xem mẫu áo", "cac mau ao", "các mẫu áo", "cho xem áo", "xem ao",
+            "gửi áo", "gửi mẫu áo", "mẫu áo", "mau ao", "có mẫu nào", "co mau nao", "shop có mẫu", "gửi mẫu", "gui mau", "mẫu mới", "mau moi"
+        ])
+        if is_general_model_query and not is_more_models_query:
+            suggested_images = suggested_images[:2]
+    else:
         # Nếu hỏi xem tất cả (cả áo lẫn quần)
-        elif any(k in lower_user for k in ["tất cả", "tat ca", "hết", "het", "xem hết", "all", "tất cả mẫu", "toàn bộ", "xem tất cả"]):
+        if any(k in lower_user for k in ["tất cả", "tat ca", "hết", "het", "xem hết", "all", "tất cả mẫu", "toàn bộ", "xem tất cả"]):
             for img in ["/static/products/mau_moi_1.png", "/static/products/mau_moi_2.png"] + list(ALL_ANH_AO) + list(ALL_ANH_QUAN):
                 if img not in suggested_images:
                     suggested_images.append(img)
 
-        # Nếu hỏi xem mẫu chung chung ("cho xem mẫu", "xem mẫu", "mẫu đâu", "cho xem mau")
-        elif any(k in lower_user for k in ["cho xem mẫu", "xem mẫu", "mẫu đâu", "cho xem mau", "xem mau", "sản phẩm", "san pham"]):
-            # Ưu tiên gửi đúng 2 mẫu mới để tránh spam khách
+        # Nếu hỏi xem ảnh quần
+        elif any(k in lower_user for k in ["xem ảnh quần", "ảnh quần", "xem mẫu quần", "cac mau quan", "các mẫu quần", "cho xem quần", "xem quan", "gửi mẫu quần", "mẫu quần"]):
+            for q_img in ALL_ANH_QUAN:
+                if q_img not in suggested_images:
+                    suggested_images.append(q_img)
+
+        # Khách mới chat hỏi mẫu hoặc hỏi xem mẫu áo -> CHỈ GỬI ĐÚNG 2 ẢNH MÃ MỚI THÔI
+        elif any(k in lower_user for k in [
+            "mẫu mới", "mau moi", "mẫu áo mới", "mau ao moi", "áo mới", "ao moi", "mới nhất", "moi nhat",
+            "cho xem mẫu", "xem mẫu", "mẫu đâu", "cho xem mau", "xem mau", "sản phẩm", "san pham",
+            "xem ảnh áo", "ảnh áo", "xem mẫu áo", "cac mau ao", "các mẫu áo", "cho xem áo", "xem ao",
+            "gửi áo", "gửi mẫu áo", "mẫu áo", "mau ao", "có mẫu nào", "co mau nao", "shop có mẫu", "gửi mẫu", "gui mau"
+        ]) or (bool(re.search(r'\b(mới|moi|new)\b', lower_user)) and not bool(re.search(r'\bnew_\d+\b', lower_user))):
             try:
                 from app.services.new_models_service import get_new_models
                 new_m = get_new_models()
-                for m in new_m:
+                for m in new_m[:2]:
                     img = m.get("image_url")
                     if img and img not in suggested_images:
                         suggested_images.append(img)
@@ -398,18 +402,7 @@ async def generate_response(
                 pass
             if not suggested_images:
                 suggested_images = ["/static/products/mau_moi_1.png", "/static/products/mau_moi_2.png"]
-
-        # Nếu hỏi xem ảnh quần
-        elif any(k in lower_user for k in ["xem ảnh quần", "ảnh quần", "xem mẫu quần", "cac mau quan", "các mẫu quần", "cho xem quần", "xem quan", "gửi mẫu quần"]):
-            for q_img in ALL_ANH_QUAN:
-                if q_img not in suggested_images:
-                    suggested_images.append(q_img)
-
-        # Nếu hỏi xem ảnh áo
-        elif any(k in lower_user for k in ["xem ảnh áo", "ảnh áo", "xem mẫu áo", "cac mau ao", "các mẫu áo", "cho xem áo", "xem ao", "gửi áo", "gửi mẫu áo"]):
-            for a_img in ALL_ANH_AO:
-                if a_img not in suggested_images:
-                    suggested_images.append(a_img)
+            suggested_images = suggested_images[:2]
 
         # Chỉ gửi bảng size KHI khách hỏi bảng size (tránh spam ảnh size)
         elif any(k in lower_user for k in ["bảng size", "bang size", "size chart", "bảng số đo", "bang so do", "form size"]):

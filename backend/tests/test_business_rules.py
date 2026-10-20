@@ -157,12 +157,19 @@ class TestTimAnhSanPham:
             assert len(res["image_urls"]) == 2
 
     def test_tim_all_anh_ao(self):
+        # Khách hỏi mẫu áo ban đầu: chỉ gửi đúng 2 mẫu mới
         for kw in ["xem ảnh áo", "ảnh áo", "mẫu áo", "các mẫu áo"]:
+            res = tim_anh_san_pham(kw)
+            assert res["found"] is True
+            assert len(res["image_urls"]) == 2
+            assert "/static/products/mau_moi_1.png" in res["image_urls"]
+            assert "/static/products/mau_moi_2.png" in res["image_urls"]
+
+    def test_tim_anh_con_lai_khi_hoi_them_mau(self):
+        # Khi khách hỏi thêm mẫu, còn mẫu nào nữa, mẫu khác: gửi các ảnh còn lại
+        for kw in ["còn mẫu nào nữa shop", "thêm mẫu", "muốn xem thêm mẫu", "mẫu khác"]:
             res = tim_anh_san_pham(kw)
             assert res["found"] is True
             assert "/static/products/nhom_1.jpg" in res["image_urls"]
             assert "/static/products/nhom_2.jpg" in res["image_urls"]
-            assert "/static/products/nhom_4.jpg" in res["image_urls"]
-            assert "/static/products/nhom_5.jpg" in res["image_urls"]
-            assert "/static/products/nhom_6.jpg" in res["image_urls"]
-            assert len(res["image_urls"]) == 5
+            assert len(res["image_urls"]) >= 5

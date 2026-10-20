@@ -142,14 +142,18 @@ def tim_anh_san_pham(ma_san_pham_hoac_tu_khoa: str) -> Dict[str, Any]:
             from app.services.new_models_service import get_new_models
             new_models = get_new_models()
             if new_models:
-                image_urls = [m["image_url"] for m in new_models if m.get("image_url")]
+                image_urls = [m["image_url"] for m in new_models if m.get("image_url")][:2]
         except Exception:
             pass
         if not image_urls:
             image_urls = ["/static/products/mau_moi_1.png", "/static/products/mau_moi_2.png"]
 
-    # 0b. Khách hỏi xem MẪU KHÁC / MẪU CŨ / BỘ SƯU TẬP TRƯỚC
+    # 0b. Khách hỏi xem THÊM MẪU / CÒN MẪU NÀO NỮA / MẪU KHÁC / MẪU CŨ / BỘ SƯU TẬP TRƯỚC
+    # CHỈ KHI NÀO KHÁCH HỎI CÁC CÂU NÀY MỚI GỬI NHỮNG ẢNH CÒN LẠI!
     elif any(k in tu_khoa_lower for k in [
+        "còn mẫu nào nữa", "con mau nao nua", "còn mẫu nào ko", "con mau nao ko", "còn mẫu ko", "con mau ko",
+        "thêm mẫu", "them mau", "xem thêm mẫu", "xem them mau", "muốn xem thêm mẫu", "muon xem them mau",
+        "gửi thêm mẫu", "gui them mau", "cho thêm mẫu", "cho them mau", "còn mẫu nào", "con mau nao",
         "mẫu khác", "mau khac", "mẫu nào khác", "mau nao khac", "mẫu khác đâu", "xem mẫu khác",
         "mẫu cũ", "mau cu", "mẫu trước", "mau truoc", "bộ sưu tập cũ", "bo suu tap cu"
     ]):
@@ -175,18 +179,23 @@ def tim_anh_san_pham(ma_san_pham_hoac_tu_khoa: str) -> Dict[str, Any]:
         except Exception:
             pass
 
-    # 0d. Khách hỏi xem mẫu chung chung ("cho xem mẫu", "xem mẫu", "mẫu đâu", "cho xem mau", "xem mau", "sản phẩm", "san pham")
-    elif any(k in tu_khoa_lower for k in ["cho xem mẫu", "xem mẫu", "mẫu đâu", "cho xem mau", "xem mau", "sản phẩm", "san pham"]) or tu_khoa_lower in ("mẫu", "mau"):
-        # Ưu tiên gửi đúng 2 mẫu mới nhất để không spam khách
+    # 0d. Khách mới chat hỏi xem mẫu chung chung hoặc xem mẫu áo ("cho xem mẫu", "xem mẫu", "mẫu đâu", "cho xem mau", "xem mau", "sản phẩm", "san pham", "mẫu áo", "mau ao", "ảnh áo", "anh ao", "xem áo", "xem ao", "cac mau ao", "các mẫu áo", "gửi áo", "gửi mẫu", "gui mau", "áo", "ao", "áo thun", "ao thun")
+    # QUY TẮC TUYỆT ĐỐI: CHỈ GỬI ĐÚNG 2 ẢNH MÃ MỚI ĐỂ TRÁNH SPAM KHÁCH
+    elif any(k in tu_khoa_lower for k in [
+        "cho xem mẫu", "xem mẫu", "mẫu đâu", "cho xem mau", "xem mau", "sản phẩm", "san pham",
+        "mẫu áo", "mau ao", "ảnh áo", "anh ao", "xem áo", "xem ao", "cac mau ao", "các mẫu áo",
+        "gửi áo", "gửi mẫu", "gui mau", "áo thun", "ao thun", "có mẫu nào", "co mau nao"
+    ]) or tu_khoa_lower in ("mẫu", "mau", "áo", "ao"):
         try:
             from app.services.new_models_service import get_new_models
             new_models = get_new_models()
             if new_models:
-                image_urls = [m["image_url"] for m in new_models if m.get("image_url")]
+                image_urls = [m["image_url"] for m in new_models if m.get("image_url")][:2]
         except Exception:
             pass
         if not image_urls:
             image_urls = ["/static/products/mau_moi_1.png", "/static/products/mau_moi_2.png"]
+        image_urls = image_urls[:2]
 
     # 1. Khách hỏi xem toàn bộ ảnh Quần
     elif any(k in tu_khoa_lower for k in ["quần", "quan", "short", "đùi"]):
