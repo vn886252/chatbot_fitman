@@ -83,6 +83,41 @@ def is_bot_sent(mid: str) -> bool:
     return mid in _bot_sent_mids
 
 
+# Lưu vết các tin nhắn bot vừa/đang gửi để phân biệt tuyệt đối với tin nhắn người thật nhắn từ Page Inbox
+_recent_bot_outbox: OrderedDict[Tuple[str, str], float] = OrderedDict()
+_MAX_OUTBOX = 500
+_OUTBOX_TTL = 60.0  # 60 giây
+
+
+def record_bot_outgoing(recipient_id: str, text: str = "") -> None:
+    """Ghi nhận bot vừa gửi hoặc chuẩn bị gửi tin nhắn đến recipient_id."""
+    if not recipient_id:
+        return
+    now = time.time()
+    while _recent_bot_outbox and (now - next(iter(_recent_bot_outbox.values()))) > _OUTBOX_TTL:
+        _recent_bot_outbox.popitem(last=False)
+    norm_text = text.strip() if text else ""
+    key = (str(recipient_id), norm_text)
+    _recent_bot_outbox[key] = now
+    if len(_recent_bot_outbox) > _MAX_OUTBOX:
+        _recent_bot_outbox.popitem(last=False)
+
+
+def is_recent_bot_outgoing(recipient_id: str, text: str = "") -> bool:
+    """Kiểm tra xem nội dung gửi đến recipient_id này có phải do chính bot vừa gửi không."""
+    if not recipient_id:
+        return False
+    now = time.time()
+    norm_text = text.strip() if text else ""
+    key = (str(recipient_id), norm_text)
+    if key in _recent_bot_outbox:
+        if (now - _recent_bot_outbox[key]) <= _OUTBOX_TTL:
+            return True
+        else:
+            del _recent_bot_outbox[key]
+    return False
+
+
 def pause_global(reason: str = "admin_requested") -> float:
     """
     Tạm dừng TOÀN BỘ bot (tất cả khách hàng) trong HANDOVER_TIMEOUT_HOURS (mặc định 2 giờ).

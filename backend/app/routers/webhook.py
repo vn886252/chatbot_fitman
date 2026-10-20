@@ -8,6 +8,7 @@ from app.services.llm_service import generate_response
 from app.services.facebook_service import send_text_message, send_image_message, send_image_grid, get_customer_name
 from app.services.handover_service import (
     is_bot_sent,
+    is_recent_bot_outgoing,
     record_human_message,
     is_bot_paused,
     pause_bot,
@@ -112,25 +113,40 @@ async def handle_webhook(request: Request):
                 if message.get("is_echo"):
                     mid = message.get("mid")
                     app_id = message.get("app_id")
+                    customer_id = event.get("recipient", {}).get("id")
+                    human_text = message.get("text") or ""
 
-                    # Nếu là tin nhắn do chính Bot gửi qua Graph API -> bỏ qua
-                    # (Facebook gửi kèm app_id nếu do Bot gửi, còn người thật gửi từ Inbox thì app_id là None/trống)
-                    if is_bot_sent(mid) or (app_id is not None and str(app_id) != ""):
+                    # Phân biệt tin nhắn do Bot gửi vs Người thật (Chủ shop/Admin) gửi:
+                    # 1. Message ID (mid) nằm trong danh sách bot vừa gửi qua Graph API
+                    # 2. Hoặc cặp (customer_id, text) trùng với tin nhắn bot vừa dispatch
+                    # 3. Hoặc app_id trùng với FB_APP_ID cấu hình riêng cho bot
+                    is_from_bot = False
+                    if mid and is_bot_sent(mid):
+                        is_from_bot = True
+                    elif customer_id and is_recent_bot_outgoing(customer_id, human_text):
+                        is_from_bot = True
+                    elif getattr(settings, "FB_APP_ID", None) and app_id and str(app_id) == str(settings.FB_APP_ID):
+                        is_from_bot = True
+
+                    if is_from_bot:
                         continue
 
-                    # Nếu KHÔNG phải Bot gửi -> Chắc chắn là NGƯỜI THẬT (Admin/Nhân viên) nhắn qua Page Inbox!
-                    customer_id = event.get("recipient", {}).get("id")
-                    human_text = message.get("text") or "[Hình ảnh/Tệp đính kèm]"
+                    # Nếu KHÔNG phải Bot gửi -> Chắc chắn 100% là NGƯỜI THẬT (Admin/Chủ shop) nhắn qua Page Inbox!
+                    # LẬP TỨC DỪNG BOT VỚI KHÁCH NÀY!
                     if customer_id:
                         record_last_customer(customer_id)
                         is_first = record_human_message(customer_id)
+                        # Lưu tin nhắn của admin vào conversation history để bot nắm được ngữ cảnh nếu sau này unpause
+                        if human_text:
+                            _conversation_history[customer_id].append({"role": "assistant", "content": human_text})
+                        logger.info(f"[Handover] Admin intervened for customer {customer_id}: '{human_text[:60]}'. Bot PAUSED immediately!")
                         if is_first:
                             customer_name = await get_customer_name(customer_id)
                             await send_handover_alert(
                                 customer_id=customer_id,
                                 customer_name=customer_name,
                                 event_type="human_chatting",
-                                user_text=human_text
+                                user_text=human_text or "[Hình ảnh/Tệp đính kèm]"
                             )
                     continue
 
@@ -263,6 +279,12 @@ async def handle_webhook(request: Request):
                                 # Gán history sau khi đã duyệt hết toàn bộ updated messages
                                 _conversation_history[sender_id] = clean_history
 
+                            # KIỂM TRA LẦN CUỐI: Trong lúc bot đang suy nghĩ (gọi LLM), nếu người thật đã vào nhắn tin thì HỦY BỎ câu trả lời của bot ngay lập tức!
+                            paused_now, _ = is_bot_paused(sender_id)
+                            if paused_now:
+                                logger.info(f"[Handover] Admin intervened during generation for {sender_id}. Suppressing bot reply!")
+                                continue
+
                             # Gửi câu trả lời văn bản
                             if reply_text:
                                 # Nếu là câu thông báo bận/lỗi hệ thống, áp dụng rate-limit để không spam khách
@@ -279,6 +301,10 @@ async def handle_webhook(request: Request):
                             # - Không bị khung template xén ảnh, không có hộp xám thừa.
                             # - Dùng cờ notification_type="SILENT_PUSH" để toàn bộ ảnh gửi âm thầm, KHÔNG phát chuông ting ting!
                             for img in suggested_images:
+                                paused_during_img, _ = is_bot_paused(sender_id)
+                                if paused_during_img:
+                                    logger.info(f"[Handover] Admin intervened. Suppressing image send for {sender_id}!")
+                                    break
                                 await send_image_message(sender_id, img, notification_type="SILENT_PUSH")
 
                         except Exception as e:

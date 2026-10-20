@@ -3,7 +3,7 @@ import json
 import logging
 import httpx
 from app.config import settings, ROOT_DIR
-from app.services.handover_service import record_bot_sent
+from app.services.handover_service import record_bot_sent, record_bot_outgoing
 
 logger = logging.getLogger(__name__)
 
@@ -40,6 +40,7 @@ async def get_customer_name(recipient_id: str) -> str:
 
 
 async def send_text_message(recipient_id: str, text: str, notification_type: str = "REGULAR") -> bool:
+    record_bot_outgoing(recipient_id, text)
     url = f"https://graph.facebook.com/v19.0/me/messages?access_token={settings.FB_PAGE_ACCESS_TOKEN}"
     payload = {
         "recipient": {"id": recipient_id},
@@ -76,6 +77,7 @@ async def send_image_message(recipient_id: str, image_url: str, notification_typ
     2. Fallback: Nếu không tìm thấy file cục bộ hoặc là URL http/https, gửi qua URL payload.
     """
     url = f"https://graph.facebook.com/v19.0/me/messages?access_token={settings.FB_PAGE_ACCESS_TOKEN}"
+    record_bot_outgoing(recipient_id, image_url)
 
     # 1. Xác định đường dẫn file cục bộ trên server
     local_path = None
@@ -182,6 +184,8 @@ async def send_image_grid(recipient_id: str, images: list[str]) -> bool:
         return False
 
     url = f"https://graph.facebook.com/v19.0/me/messages?access_token={settings.FB_PAGE_ACCESS_TOKEN}"
+    for u in images[:6]:
+        record_bot_outgoing(recipient_id, u)
     resolved_urls = [_resolve_image_url(img) for img in images[:6]]
     if len(resolved_urls) < 2:
         return False

@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     HOST: str = Field(default="0.0.0.0")
     FB_PAGE_ACCESS_TOKEN: str = Field(default="")
     FB_VERIFY_TOKEN: str = Field(default="fitman_webhook_verify_2026")
+    FB_APP_ID: Optional[str] = Field(default="")
     OPENAI_API_KEY: str = Field(default="")
     OPENAI_MODEL: str = Field(default="gpt-4o-mini")
     USE_LOCAL_LLM: bool = Field(default=False)

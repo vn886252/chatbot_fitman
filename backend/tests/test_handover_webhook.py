@@ -163,3 +163,72 @@ async def test_webhook_bot_own_echo_is_ignored():
 
         # Vì là echo từ chính bot gửi -> không gửi alert, không pause người thật
         mock_alert.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_webhook_human_echo_with_business_suite_app_id_pauses_bot():
+    """Khi chủ shop nhắn từ Meta Business Suite web/mobile (có app_id), bot vẫn phải lập tức tạm dừng!"""
+    customer_id = "fb_customer_business_suite_99"
+    payload = {
+        "object": "page",
+        "entry": [{
+            "messaging": [{
+                "sender": {"id": "page_123"},
+                "recipient": {"id": customer_id},
+                "message": {
+                    "is_echo": True,
+                    "mid": "mid.human_mbs_002",
+                    "app_id": 256002347743983,  # Meta Business Suite internal app_id
+                    "text": "Chào bạn, chủ shop đang trực tiếp chat đây ạ!"
+                }
+            }]
+        }]
+    }
+
+    with patch("app.routers.webhook.send_handover_alert", new_callable=AsyncMock) as mock_alert:
+        mock_alert.return_value = True
+
+        res = client.post("/webhook", json=payload)
+        assert res.status_code == 200
+
+        # Bot nhận diện người thật nhắn từ Business Suite -> gửi Telegram alert
+        mock_alert.assert_called_once()
+        assert mock_alert.call_args[1]["event_type"] == "human_chatting"
+        assert mock_alert.call_args[1]["customer_id"] == customer_id
+
+        # Trạng thái bot với khách chuyển thành paused
+        paused, _ = is_bot_paused(customer_id)
+        assert paused is True
+
+
+@pytest.mark.asyncio
+async def test_webhook_admin_intervention_during_generation_suppresses_reply():
+    """Nếu admin vào nhắn trong lúc bot đang gọi LLM, bot phải hủy câu trả lời và giữ im lặng!"""
+    customer_id = "fb_customer_intervention_88"
+
+    # Giả lập LLM chạy chậm, trong lúc chạy admin nhắn tin làm pause_bot
+    async def fake_llm(*args, **kwargs):
+        from app.services.handover_service import pause_bot
+        pause_bot(customer_id, reason="human_chatting")
+        return {"reply_text": "Dạ em tư vấn cho anh...", "tool_calls_made": []}
+
+    payload = {
+        "object": "page",
+        "entry": [{
+            "messaging": [{
+                "sender": {"id": customer_id},
+                "recipient": {"id": "page_123"},
+                "message": {
+                    "text": "Tư vấn cho mình với",
+                    "mid": "mid.cust_msg_001"
+                }
+            }]
+        }]
+    }
+
+    with patch("app.routers.webhook.generate_response", side_effect=fake_llm), \
+         patch("app.routers.webhook.send_text_message", new_callable=AsyncMock) as mock_send:
+        res = client.post("/webhook", json=payload)
+        assert res.status_code == 200
+        # Bot tuyệt đối KHÔNG gửi tin nhắn đè lên tin của admin
+        mock_send.assert_not_called()
