@@ -189,6 +189,30 @@ async def generate_response(
                         if sender_id and not f_args.get("sender_id"):
                             f_args["sender_id"] = sender_id
 
+                    if f_name == "tim_anh_san_pham":
+                        user_lower = normalized_user_message.lower()
+                        is_asking_availability = any(k in user_lower for k in [
+                            "còn ko", "còn không", "con ko", "con khong", "còn hàng", "con hang",
+                            "còn màu", "con mau", "còn size", "con size", "còn áo", "con ao", "còn quần", "con quan"
+                        ])
+                        is_explicit_view_request = any(k in user_lower for k in [
+                            "cho xem", "xem ảnh", "xem anh", "gửi ảnh", "gui anh", "gửi mẫu", "gui mau",
+                            "xem mẫu", "xem mau", "cho coi", "hình ảnh", "hinh anh", "ảnh áo", "anh ao", "ảnh quần", "anh quan"
+                        ])
+                        if is_asking_availability and not is_explicit_view_request:
+                            tool_calls_made.append(f_name)
+                            tool_result = {
+                                "status": "in_stock",
+                                "message": "Mẫu này và tất cả các màu/size bên shop LUÔN LUÔN CÒN HÀNG SẴN 100%. Trả lời cực kỳ ngắn gọn: Báo khách DẠ CÒN HÀNG và xin chiều cao cân nặng để tư vấn size. TUYỆT ĐỐI CẤM BỊA CÂU GỬI ẢNH, KHÔNG GỬI ẢNH!"
+                            }
+                            full_messages.append({
+                                "role": "tool",
+                                "tool_call_id": tc.get("id", f"call_{turn}_{f_name}"),
+                                "name": f_name,
+                                "content": json.dumps(tool_result, ensure_ascii=False)
+                            })
+                            continue
+
                     tool_calls_made.append(f_name)
                     tool_result = {}
 
@@ -296,13 +320,28 @@ async def generate_response(
     # Bổ sung ảnh từ keyword trong câu chat (CHỈ KHI khách hỏi xem ảnh / xem mẫu)
     lower_user = user_message.lower()
 
-    # KIỂM TRA: Nếu khách đang ĐẶT HÀNG có số / mã cụ thể (ví dụ: 'lấy áo 45 46 quần 13', 'áo 30 31 quần 124')
+    # KIỂM TRA 1: Khách CHỈ HỎI CÒN HÀNG HAY KHÔNG (ví dụ: 'mẫu áo basketball màu đen còn ko shop', 'màu đen còn không', 'còn size L không')
+    # TUYỆT ĐỐI KHÔNG gửi bất kỳ hình ảnh nào!
+    is_asking_availability = any(k in lower_user for k in [
+        "còn ko", "còn không", "con ko", "con khong", "còn hàng", "con hang",
+        "còn màu", "con mau", "còn size", "con size", "còn áo", "con ao", "còn quần", "con quan"
+    ])
+    is_explicit_view_request = any(k in lower_user for k in [
+        "cho xem", "xem ảnh", "xem anh", "gửi ảnh", "gui anh", "gửi mẫu", "gui mau",
+        "xem mẫu", "xem mau", "cho coi", "hình ảnh", "hinh anh", "bảng size", "bang size"
+    ])
+
+    # KIỂM TRA 2: Nếu khách đang ĐẶT HÀNG có số / mã cụ thể (ví dụ: 'lấy áo 45 46 quần 13', 'áo 30 31 quần 124')
     # TUYỆT ĐỐI KHÔNG gửi ảnh fallback!
     has_order_verb = any(w in lower_user for w in ["lấy", "lay", "đặt", "dat", "mua", "chốt", "chot"])
     has_digits = bool(re.search(r'\d+', user_message))
     is_ordering_with_codes = has_order_verb and has_digits
 
-    if not is_ordering_with_codes:
+    if is_asking_availability and not is_explicit_view_request:
+        suggested_images = []
+    elif is_ordering_with_codes or ("tim_anh_san_pham" in tool_calls_made and suggested_images):
+        pass
+    else:
         # Nếu hỏi xem mẫu mới (tối đa 6 mẫu mới nhất)
         is_new_query = (
             any(k in lower_user for k in [
@@ -361,13 +400,13 @@ async def generate_response(
                 suggested_images = ["/static/products/mau_moi_1.png", "/static/products/mau_moi_2.png"]
 
         # Nếu hỏi xem ảnh quần
-        elif any(k in lower_user for k in ["xem ảnh quần", "ảnh quần", "mẫu quần", "xem mẫu quần", "cac mau quan", "các mẫu quần", "cho xem quần", "xem quan"]):
+        elif any(k in lower_user for k in ["xem ảnh quần", "ảnh quần", "xem mẫu quần", "cac mau quan", "các mẫu quần", "cho xem quần", "xem quan", "gửi mẫu quần"]):
             for q_img in ALL_ANH_QUAN:
                 if q_img not in suggested_images:
                     suggested_images.append(q_img)
 
         # Nếu hỏi xem ảnh áo
-        elif any(k in lower_user for k in ["xem ảnh áo", "ảnh áo", "mẫu áo", "xem mẫu áo", "cac mau ao", "các mẫu áo", "cho xem áo", "xem ao", "gửi áo"]):
+        elif any(k in lower_user for k in ["xem ảnh áo", "ảnh áo", "xem mẫu áo", "cac mau ao", "các mẫu áo", "cho xem áo", "xem ao", "gửi áo", "gửi mẫu áo"]):
             for a_img in ALL_ANH_AO:
                 if a_img not in suggested_images:
                     suggested_images.append(a_img)

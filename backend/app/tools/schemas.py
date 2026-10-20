@@ -48,7 +48,7 @@ FITMAN_TOOLS = [
         "type": "function",
         "function": {
             "name": "tim_anh_san_pham",
-            "description": "Tìm kiếm đường dẫn ảnh sản phẩm tương ứng với mã áo/quần hoặc bảng size (ví dụ: mã '1', 'W1', 'Q1', 'Q6', 'nhom_1', 'bảng size').",
+            "description": "CHỈ GỌI khi khách hàng YÊU CẦU XEM ẢNH, GỬI MẪU (ví dụ: 'cho xem ảnh', 'gửi mẫu', 'cho xem áo mới', 'bảng size'). TUYỆT ĐỐI CẤM GỌI hàm này khi khách CHỈ HỎI CÒN HÀNG HAY KHÔNG (ví dụ: 'mẫu áo basketball màu đen còn ko shop', 'màu đen còn không', 'mẫu này còn không', 'còn size L không', 'còn hàng không'). Khi khách hỏi còn hàng hay không, LUÔN BÁO CÒN HÀNG và hỏi chiều cao cân nặng, TUYỆT ĐỐI KHÔNG GỌI HÀM NÀY!",
             "parameters": {
                 "type": "object",
                 "properties": {

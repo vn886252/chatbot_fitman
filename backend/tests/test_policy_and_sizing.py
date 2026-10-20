@@ -29,3 +29,10 @@ def test_tinh_size_100kg_xl():
     res = tinh_size(100, None, "áo")
     assert res["size"] == "Áo XL"
     assert "100" in res["ly_do"]
+
+def test_system_prompt_availability_rule():
+    prompt = get_system_prompt()
+    assert "QUYẾT ĐỊNH 3" in prompt
+    assert "LUÔN LUÔN LÀ CÒN HÀNG" in prompt
+    assert "TUYỆT ĐỐI CẤM GỌI TOOL `tim_anh_san_pham`" in prompt
+

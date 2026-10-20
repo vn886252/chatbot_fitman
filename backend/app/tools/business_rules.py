@@ -101,6 +101,15 @@ def tim_anh_san_pham(ma_san_pham_hoac_tu_khoa: str) -> Dict[str, Any]:
     if not found_specific_codes and tu_khoa_upper in ANH_THEO_MA:
         found_specific_codes.append(ANH_THEO_MA[tu_khoa_upper])
 
+    # Nhận diện từ khóa tên mẫu đặc biệt (Basketball, ...)
+    if not found_specific_codes and any(k in tu_khoa_lower for k in ["basketball", "bóng rổ", "bong ro"]):
+        if any(c in tu_khoa_lower for c in ["đen", "den", "black"]):
+            found_specific_codes.append("/static/products/new_models/model_B2.jpg")
+        elif any(c in tu_khoa_lower for c in ["trắng", "trang", "white"]):
+            found_specific_codes.append("/static/products/new_models/model_B1.jpg")
+        else:
+            found_specific_codes.extend(["/static/products/new_models/model_B1.jpg", "/static/products/new_models/model_B2.jpg"])
+
     if not found_specific_codes:
         for word in tu_khoa.split():
             w_clean = word.strip(".,;:?!-_/#").upper()
