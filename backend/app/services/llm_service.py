@@ -13,6 +13,39 @@ from app.services.customer_service import get_customer_profile, format_customer_
 
 logger = logging.getLogger(__name__)
 
+
+def extract_body_measurements_from_text(text: str) -> tuple[Optional[float], Optional[float]]:
+    """
+    Trích xuất cân nặng (kg) và chiều cao (m) từ tin nhắn.
+    Hỗ trợ: '70kg', 'nặng 70kg', '1m60', 'cao 1m60', '1.60m', '165cm', 'cao 165', v.v.
+    """
+    if not text:
+        return None, None
+    kg_m = re.search(r'(?:(?:nặng|nang)\s*)?(\d{2,3}(?:\.\d+)?)\s*(?:kg|kí|ký|ki|cân|can)\b', text, re.IGNORECASE)
+    if not kg_m:
+        kg_m = re.search(r'(?:nặng|nang)\s*(\d{2,3}(?:\.\d+)?)\b', text, re.IGNORECASE)
+    weight = float(kg_m.group(1)) if kg_m else None
+
+    # Chiều cao: 1m60, 1m7, 1.70m, 170cm, cao 165
+    h_m1 = re.search(r'\b1[mM](\d{1,2})\b', text)
+    h_m2 = re.search(r'\b1\.\d{1,2}\s*m?\b', text)
+    h_m3 = re.search(r'\b(1\d{2})\s*cm\b', text)
+    h_m4 = re.search(r'(?:cao|chieu cao|chiều cao)\s*(1[4-9]\d)\b', text, re.IGNORECASE)
+
+    height = None
+    if h_m1:
+        d = h_m1.group(1)
+        d_str = d if len(d) == 2 else d + "0"
+        height = float("1." + d_str)
+    elif h_m2:
+        height = float(re.sub(r'[^\d.]', '', h_m2.group(0)))
+    elif h_m3:
+        height = float(h_m3.group(1)) / 100.0
+    elif h_m4:
+        height = float(h_m4.group(1)) / 100.0
+
+    return weight, height
+
 async def generate_response(
     messages: List[Dict[str, Any]],
     user_message: str,
@@ -24,6 +57,50 @@ async def generate_response(
 
     customer_profile = get_customer_profile(sender_id) if sender_id else None
 
+    # Phát hiện số đo cơ thể và size từ customer_profile, lịch sử chat và tin nhắn hiện tại
+    known_weight = customer_profile.get("can_nang") if customer_profile else None
+    known_height = customer_profile.get("chieu_cao") if customer_profile else None
+    known_size = customer_profile.get("size_ao") if customer_profile else None
+
+    # Quét trong lịch sử chat và tin nhắn hiện tại
+    all_turns = list(messages) + [{"role": "user", "content": normalized_user_message}]
+    for m in all_turns:
+        c = m.get("content", "")
+        if c:
+            w, h = extract_body_measurements_from_text(c)
+            if w and not known_weight:
+                known_weight = w
+            if h and not known_height:
+                known_height = h
+            sz_m = re.search(r'(?:size|sz|mặc size)\s*\*{0,2}([SMLXL]+)\*{0,2}', c, re.IGNORECASE)
+            if sz_m and not known_size:
+                known_size = sz_m.group(1).upper()
+
+    # Nếu có cân nặng mà chưa có size, tự động tính size
+    if known_weight and not known_size:
+        try:
+            from app.tools.business_rules import tinh_size
+            res_sz = tinh_size(known_weight, known_height)
+            ao_m = re.search(r'Áo\s*([SMLXL]+)', res_sz.get("size", ""), re.IGNORECASE)
+            if ao_m:
+                known_size = ao_m.group(1).upper()
+        except Exception:
+            pass
+
+    # Tự động cập nhật hồ sơ khách hàng nếu có số đo
+    if sender_id and (known_weight or known_height or known_size):
+        kw_prof = {}
+        if known_weight:
+            kw_prof["can_nang"] = known_weight
+        if known_height:
+            kw_prof["chieu_cao"] = known_height
+        if known_size:
+            kw_prof["size_ao"] = known_size
+        try:
+            save_customer_profile(sender_id, **kw_prof)
+        except Exception as e:
+            logger.warning(f"Error auto-saving customer profile: {e}")
+
     # Chuẩn bị danh sách messages đầy đủ
     full_messages = [msg.copy() for msg in messages]
     if not full_messages or full_messages[0].get("role") != "system":
@@ -34,6 +111,21 @@ async def generate_response(
             memory_prompt = format_customer_memory_context(customer_profile)
             if memory_prompt:
                 sys_prompt += f"\n\n{memory_prompt}"
+        if known_weight or known_size:
+            info_parts = []
+            if known_weight:
+                info_parts.append(f"{known_weight}kg")
+            if known_height:
+                info_parts.append(f"{known_height}m")
+            if known_size:
+                info_parts.append(f"Size {known_size}")
+            info_str = ", ".join(info_parts)
+            sys_prompt += (
+                f"\n\n⚠️ LƯU Ý ĐẶC BIỆT VỀ KHÁCH NÀY:\n"
+                f"- Khách ĐÃ CÓ thông tin số đo / size: {info_str}.\n"
+                f"- ❌ TUYỆT ĐỐI CẤM hỏi lại 'chiều cao cân nặng'! CẤM hỏi câu 'cho em xin chiều cao và cân nặng'!\n"
+                f"- ✅ BẮT BUỘC: Nhắc nhẹ size của khách (size {known_size or 'chuẩn'}) và hỏi MẪU khách thích hoặc THÔNG TIN GIAO HÀNG!"
+            )
         full_messages.insert(0, {"role": "system", "content": sys_prompt})
 
     full_messages.append({"role": "user", "content": normalized_user_message})
@@ -408,6 +500,35 @@ async def generate_response(
         elif any(k in lower_user for k in ["bảng size", "bang size", "size chart", "bảng số đo", "bang so do", "form size"]):
             if "/static/products/bang_size.jpg" not in suggested_images:
                 suggested_images.append("/static/products/bang_size.jpg")
+
+    # BẢO VỆ 2 LỚP: Nếu đã biết số đo / size mà bot lỡ hỏi lại chiều cao cân nặng
+    if (known_weight or known_size) and reply_text:
+        ask_hw_pattern = re.compile(
+            r'(?i)\s*(?:anh|chị|bạn)?\s*(?:cho em xin|xin|nhắn em|báo em)\s*(?:chiều cao|cân nặng|chiều cao và cân nặng|chiều cao cân nặng|số đo)[^!.\n]*[!.]?(\s*💪)?'
+        )
+        if ask_hw_pattern.search(reply_text):
+            reply_text = ask_hw_pattern.sub('', reply_text).strip()
+            # Bổ sung câu hỏi tương tác phù hợp
+            has_order_verb = any(w in lower_user for w in ["lấy", "lay", "đặt", "dat", "mua", "chốt", "chot"])
+            has_digits = bool(re.search(r'\d+', user_message))
+            if has_order_verb and has_digits:
+                reply_text += "\nAnh cho em xin địa chỉ và số điện thoại để em lên đơn gửi ship COD tận nhà cho mình nhé! 📦"
+            else:
+                sz_txt = f"size {known_size} " if known_size else ""
+                reply_text += f"\nAnh xem qua ưng mẫu nào nhắn em để em giữ {sz_txt}cho mình nhé! 💪"
+
+    # BẢO VỆ 3 LỚP: Đảm bảo câu trả lời luôn kết thúc bằng một câu hỏi tương tác (Call to Action)
+    # Tránh trường hợp bot trả lời câu hỏi cụt ngủn rồi im lặng
+    if reply_text and not any(q in reply_text for q in ["?", "không", "nha", "nhé", "nào", "chưa", "nhỉ", "📦", "💪"]):
+        has_order_verb = any(w in lower_user for w in ["lấy", "lay", "đặt", "dat", "mua", "chốt", "chot"])
+        has_digits = bool(re.search(r'\d+', user_message))
+        if not (known_weight or known_size):
+            reply_text += "\nAnh cho em xin chiều cao và cân nặng để em chọn size chuẩn cho mình nhé! 💪"
+        elif not (has_order_verb and has_digits):
+            sz_txt = f"size {known_size} " if known_size else ""
+            reply_text += f"\nAnh xem qua ưng mẫu nào nhắn em để em giữ {sz_txt}cho mình nha! 💪"
+        else:
+            reply_text += "\nAnh cho em xin địa chỉ và số điện thoại để em lên đơn gửi ship cho mình nha! 📦"
 
     suggested_image = suggested_images[0] if suggested_images else None
 
