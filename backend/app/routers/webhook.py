@@ -184,6 +184,8 @@ async def handle_webhook(request: Request):
                             sender_id,
                             source="facebook_ads",
                             ad_id=campaign.get("ad_id", ""),
+                            ad_post_id=campaign.get("post_id", ""),
+                            post_id=campaign.get("post_id", ""),
                             ad_title=campaign.get("ad_title", ""),
                             ad_ref=campaign.get("ad_ref", ""),
                             ad_campaign_name=campaign.get("name", ""),
@@ -203,7 +205,8 @@ async def handle_webhook(request: Request):
                                 ad_ref=campaign.get("ad_ref", ""),
                                 model_codes=campaign.get("model_codes", []),
                                 ad_title=campaign.get("ad_title", ""),
-                                photo_url=campaign.get("photo_url")
+                                photo_url=campaign.get("photo_url"),
+                                post_id=campaign.get("post_id", "")
                             )
                         except Exception as alert_ex:
                             logger.warning(f"Error sending ad referral alert: {alert_ex}")

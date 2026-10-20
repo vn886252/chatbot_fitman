@@ -68,6 +68,8 @@ def save_customer_profile(sender_id: str, data_dict: Optional[Dict[str, Any]] = 
         "size_quan",
         "source",
         "ad_id",
+        "ad_post_id",
+        "post_id",
         "ad_title",
         "ad_ref",
         "ad_campaign_name",
@@ -114,7 +116,9 @@ def format_customer_memory_context(profile: Optional[Dict[str, Any]]) -> str:
     if profile.get("ad_campaign_name"):
         ad_m = profile.get("ad_models")
         ad_m_str = f" (Mẫu quan tâm: {', '.join(ad_m) if isinstance(ad_m, list) else ad_m})" if ad_m else ""
-        lines.append(f"- Nguồn khách: Vào từ bài quảng cáo Facebook '{profile['ad_campaign_name']}'{ad_m_str}")
+        ad_p = profile.get("ad_post_id") or profile.get("post_id")
+        ad_p_str = f" (Bài viết: {ad_p})" if ad_p else ""
+        lines.append(f"- Nguồn khách: Vào từ bài quảng cáo Facebook '{profile['ad_campaign_name']}'{ad_p_str}{ad_m_str}")
     if profile.get("chieu_cao") and profile.get("can_nang"):
         lines.append(f"- Số đo cơ thể đã lưu: Cao {profile['chieu_cao']}m, Nặng {profile['can_nang']}kg")
     elif profile.get("chieu_cao"):

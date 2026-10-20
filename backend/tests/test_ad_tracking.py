@@ -39,6 +39,37 @@ def test_resolve_ad_campaign_by_ref():
     assert "B2" in camp_bb["model_codes"]
 
 
+def test_resolve_ad_campaign_by_post_id():
+    """Kiểm tra nhận diện chiến dịch qua post_id bài viết Fanpage (khi chạy ads bài viết)."""
+    # Giả lập tạm thời post_ids trong campaign
+    from app.services.ad_service import load_ad_campaigns
+    campaigns = load_ad_campaigns()
+    for c in campaigns:
+        if c["id"] == "basketball":
+            c["post_ids"] = ["123456789_987654321"]
+            break
+
+    with patch("app.services.ad_service.load_ad_campaigns", return_value=campaigns):
+        # Case 1: Facebook gửi post_id đầy đủ PAGEID_POSTID
+        ref_full = {
+            "source": "ADS",
+            "ads_context_data": {"post_id": "123456789_987654321"}
+        }
+        camp1 = resolve_ad_campaign(ref_full)
+        assert camp1 is not None
+        assert camp1["id"] == "basketball"
+        assert "B1" in camp1["model_codes"]
+
+        # Case 2: Facebook gửi post_id chỉ gồm phần đuôi số bài viết
+        ref_suffix = {
+            "source": "ADS",
+            "ads_context_data": {"post_id": "987654321"}
+        }
+        camp2 = resolve_ad_campaign(ref_suffix)
+        assert camp2 is not None
+        assert camp2["id"] == "basketball"
+
+
 def test_resolve_ad_campaign_by_title_keyword():
     """Kiểm tra nhận diện chiến dịch qua từ khóa trong tiêu đề bài quảng cáo."""
     ref_data = {
@@ -152,3 +183,104 @@ async def test_webhook_ad_referral_triggers_greeting_and_images():
         assert prof is not None
         assert prof["ad_ref"] == "mau_46"
         assert prof["ad_campaign_name"] == "Áo CBUM Mẫu 46 & 47"
+
+
+def test_basketball_three_post_ids():
+    """Kiểm tra cả 3 Post ID thực tế của áo Basketball mà chủ shop cấu hình."""
+    post_ids = ["1523979186418810", "1523987709751291", "1523986613084734"]
+    for pid in post_ids:
+        ref_data = {
+            "source": "ADS",
+            "ads_context_data": {
+                "post_id": f"page123_{pid}"
+            }
+        }
+        camp = resolve_ad_campaign(ref_data)
+        assert camp is not None, f"Failed to resolve campaign for post {pid}"
+        assert camp["id"] == "basketball"
+        assert camp["post_id"] == f"page123_{pid}"
+        assert "B1" in camp["model_codes"]
+        assert "B2" in camp["model_codes"]
+        assert len(camp["resolved_images"]) >= 1
+
+
+def test_ad_spend_and_performance_metrics():
+    """Kiểm tra ghi nhận chi phí ads, tính CPA trên đơn hàng và ROAS."""
+    from app.services.ad_service import parse_currency_amount, record_ad_spend, calculate_ad_performance, AD_SPEND_FILE
+    import os
+
+    # Test parse tiền
+    assert parse_currency_amount("200k") == 200000
+    assert parse_currency_amount("200.000") == 200000
+    assert parse_currency_amount("1.5tr") == 1500000
+    assert parse_currency_amount("500000") == 500000
+
+    # Test ghi nhận chi phí và tính metrics
+    test_date = "2099-01-01"
+    with patch("app.services.ad_service.load_ad_spends") as mock_load:
+        mock_load.return_value = [
+            {"date": test_date, "amount": 200000, "post_id": "1523979186418810"}
+        ]
+
+        mock_orders = [
+            {
+                "id": "ORD-001",
+                "tong_tien": 300000,
+                "ad_source": {
+                    "campaign": "Áo Bóng Rổ Basketball B1 & B2",
+                    "post_id": "1523979186418810"
+                }
+            },
+            {
+                "id": "ORD-002",
+                "tong_tien": 300000,
+                "ad_source": {
+                    "campaign": "Áo Bóng Rổ Basketball B1 & B2",
+                    "post_id": "1523979186418810"
+                }
+            },
+            {
+                "id": "ORD-003",
+                "tong_tien": 200000
+                # Đơn tự nhiên
+            }
+        ]
+
+        perf = calculate_ad_performance(mock_orders, test_date, test_date)
+        assert perf["total_orders"] == 3
+        assert perf["ad_orders_count"] == 2
+        assert perf["organic_orders_count"] == 1
+        assert perf["ad_revenue"] == 600000
+        assert perf["ad_spend"] == 200000
+        # CPA = 200.000 / 2 = 100.000đ/đơn
+        assert perf["cpa"] == 100000
+        # ROAS = 600.000 / 200.000 = 3.0x
+        assert perf["roas"] == 3.0
+        assert "1523979186418810" in perf["post_breakdown"]
+
+
+@pytest.mark.asyncio
+async def test_telegram_ads_command_handler():
+    """Kiểm tra lệnh /ads trên Telegram cập nhật chi phí và phản hồi CPA."""
+    from app.services.telegram_service import handle_telegram_update
+    from app.config import settings
+
+    update = {
+        "message": {
+            "chat": {"id": str(settings.TELEGRAM_CHAT_ID)},
+            "text": "/ads 1523979186418810 250k"
+        }
+    }
+
+    with patch("app.services.telegram_service.send_telegram_message", new_callable=AsyncMock) as mock_send, \
+         patch("app.services.ad_service.record_ad_spend") as mock_record:
+        mock_send.return_value = True
+        mock_record.return_value = {"id": "spend_mock", "amount": 250000}
+        res = await handle_telegram_update(update)
+        assert res is True
+        mock_send.assert_called_once()
+        sent_txt = mock_send.call_args[0][0]
+        assert "ĐÃ GHI NHẬN CHI PHÍ ADS" in sent_txt
+        assert "250.000đ" in sent_txt
+        assert "1523979186418810" in sent_txt
+

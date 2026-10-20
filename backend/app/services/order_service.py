@@ -169,11 +169,14 @@ def save_order(order_data: dict) -> dict:
         try:
             from app.services.customer_service import get_customer_profile
             prof = get_customer_profile(sid)
-            if prof and (prof.get("ad_campaign_name") or prof.get("ad_id") or prof.get("ad_ref")):
+            if prof and (prof.get("ad_campaign_name") or prof.get("ad_id") or prof.get("ad_ref") or prof.get("ad_post_id") or prof.get("post_id")):
+                post_id = str(prof.get("ad_post_id") or prof.get("post_id") or "").strip()
                 ad_source = {
                     "campaign": prof.get("ad_campaign_name") or "Quảng cáo Facebook",
+                    "post_id": post_id,
                     "ad_id": prof.get("ad_id", ""),
-                    "ad_ref": prof.get("ad_ref", "")
+                    "ad_ref": prof.get("ad_ref", ""),
+                    "ad_models": prof.get("ad_models", [])
                 }
         except Exception:
             pass

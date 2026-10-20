@@ -156,7 +156,9 @@ async def send_new_order_notification(order: Dict[str, Any]) -> bool:
     ad_line = ""
     if ad_src and isinstance(ad_src, dict):
         camp = html.escape(str(ad_src.get("campaign") or "Facebook Ads"))
-        ad_line = f"\n🎯 <b>Nguồn đơn:</b> Quảng cáo Facebook (<b>{camp}</b>)"
+        p_id = html.escape(str(ad_src.get("post_id") or ""))
+        p_str = f" - Bài viết: <code>{p_id}</code>" if p_id else ""
+        ad_line = f"\n🎯 <b>Nguồn đơn:</b> Quảng cáo Facebook (<b>{camp}</b>{p_str})"
 
     msg = f"""{title}
 🔖 <b>Mã đơn:</b> <code>{order_id}</code>
@@ -204,19 +206,54 @@ async def send_daily_revenue_report(target_date: Optional[str] = None) -> bool:
         khach = html.escape(str(o.get('ten_khach_hang', 'Khách hàng')))
         sdt = html.escape(str(o.get('so_dien_thoai', '')))
         sl = o.get('so_luong', 0)
+        ad_src = o.get("ad_source")
+        ad_tag = ""
+        if ad_src and isinstance(ad_src, dict):
+            p_id = ad_src.get("post_id") or ad_src.get("ad_id") or ""
+            ad_tag = f" 🎯 <i>[Ads: {p_id}]</i>" if p_id else " 🎯 <i>[Ads]</i>"
+
         if not khach or khach.strip() == "" or khach == "Khách hàng":
-            orders_detail.append(f"{idx}. <b>Đơn #{idx}</b> (<code>{sdt}</code>): {sl} món - <b>{t_tien}đ</b>")
+            orders_detail.append(f"{idx}. <b>Đơn #{idx}</b> (<code>{sdt}</code>): {sl} món - <b>{t_tien}đ</b>{ad_tag}")
         else:
-            orders_detail.append(f"{idx}. <b>Đơn #{idx}</b> ({khach} - <code>{sdt}</code>): {sl} món - <b>{t_tien}đ</b>")
+            orders_detail.append(f"{idx}. <b>Đơn #{idx}</b> ({khach} - <code>{sdt}</code>): {sl} món - <b>{t_tien}đ</b>{ad_tag}")
 
     detail_str = "\n".join(orders_detail)
+
+    ad_section = ""
+    try:
+        from app.services.ad_service import calculate_ad_performance
+        perf = calculate_ad_performance(orders, date_str, date_str)
+        if perf.get("ad_orders_count", 0) > 0 or perf.get("ad_spend", 0) > 0:
+            spend_fmt = f"{perf['ad_spend']:,}".replace(",", ".")
+            cpa_fmt = f"{perf['cpa']:,}".replace(",", ".")
+            ad_rev_fmt = f"{perf['ad_revenue']:,}".replace(",", ".")
+            ad_lines = [
+                f"🎯 <b>HIỆU QUẢ QUẢNG CÁO FACEBOOK:</b>",
+                f"• <b>Đơn từ Ads:</b> <b>{perf['ad_orders_count']}/{total_orders}</b> đơn (Doanh thu: {ad_rev_fmt}đ)"
+            ]
+            if perf["ad_spend"] > 0:
+                ad_lines.append(f"• <b>Tiền Ads đã chi:</b> {spend_fmt}đ")
+                ad_lines.append(f"• <b>Chi phí / đơn (CPA):</b> <b>{cpa_fmt}đ/đơn</b>")
+                ad_lines.append(f"• <b>Chỉ số ROAS:</b> <b>{perf['roas']}x</b>")
+            else:
+                ad_lines.append("• <i>(Chưa nhập tiền ads: gõ <code>/ads [số tiền]</code> để tính CPA & ROAS)</i>")
+
+            if perf.get("post_breakdown"):
+                ad_lines.append("• <b>Chi tiết theo bài viết:</b>")
+                for pid, pdata in perf["post_breakdown"].items():
+                    p_rev = f"{pdata.get('revenue', 0):,}".replace(",", ".")
+                    p_camp = pdata.get('campaign', 'Facebook Ads')
+                    ad_lines.append(f"  - Post <code>{pid}</code> ({p_camp}): {pdata.get('orders', 0)} đơn - {p_rev}đ")
+            ad_section = "\n" + "\n".join(ad_lines) + "\n"
+    except Exception as e:
+        logger.warning(f"Error computing ad metrics for daily report: {e}")
 
     msg = f"""📊 <b>TỔNG KẾT DOANH THU NGÀY {date_str} (LÚC 22:00)</b> 📊
 
 🛒 <b>Tổng số đơn:</b> <b>{total_orders}</b> đơn
 👕 <b>Tổng sản phẩm bán ra:</b> <b>{total_items}</b> món
 💰 <b>Tổng doanh thu:</b> <b>{formatted_rev}đ</b>
-
+{ad_section}
 📋 <b>Danh sách đơn hôm nay:</b>
 {detail_str}
 
@@ -339,7 +376,8 @@ async def send_ad_referral_alert(
     ad_ref: str = "",
     model_codes: Optional[List[str]] = None,
     ad_title: str = "",
-    photo_url: Optional[str] = None
+    photo_url: Optional[str] = None,
+    post_id: str = ""
 ) -> bool:
     """
     Gửi thông báo Telegram khi có khách hàng mới bấm vào từ bài quảng cáo Facebook.
@@ -349,12 +387,15 @@ async def send_ad_referral_alert(
     camp = html.escape(str(campaign_name or "Quảng cáo Fitman"))
     ref_txt = html.escape(str(ad_ref or "Không có"))
     aid_txt = html.escape(str(ad_id or "Không có"))
+    pid_txt = html.escape(str(post_id or ""))
     models_txt = html.escape(', '.join(model_codes)) if model_codes else "Mẫu mới"
+
+    post_line = f"\n📝 <b>Post ID bài viết:</b> <code>{pid_txt}</code>" if pid_txt else ""
 
     msg = f"""🎯 <b>KHÁCH HÀNG VÀO TỪ QUẢNG CÁO FACEBOOK!</b>
 👤 <b>Khách hàng:</b> {c_name}
 🆔 <b>ID:</b> <code>{c_id}</code>
-📢 <b>Chiến dịch:</b> <b>{camp}</b>
+📢 <b>Chiến dịch:</b> <b>{camp}</b>{post_line}
 🏷️ <b>Mã Ref:</b> <code>{ref_txt}</code>
 🆔 <b>Ad ID:</b> <code>{aid_txt}</code>
 🖼️ <b>Mẫu gửi cho khách:</b> <b>{models_txt}</b>
@@ -384,12 +425,41 @@ def format_period_report(summary: dict) -> str:
     orders = summary.get("orders", [])
     daily_breakdown = summary.get("daily_breakdown", {})
 
+    ad_section = ""
+    try:
+        from app.services.ad_service import calculate_ad_performance
+        perf = calculate_ad_performance(orders, start_date, end_date)
+        if perf.get("ad_orders_count", 0) > 0 or perf.get("ad_spend", 0) > 0:
+            spend_fmt = f"{perf['ad_spend']:,}".replace(",", ".")
+            cpa_fmt = f"{perf['cpa']:,}".replace(",", ".")
+            ad_rev_fmt = f"{perf['ad_revenue']:,}".replace(",", ".")
+            ad_lines = [
+                f"\n🎯 <b>HIỆU QUẢ QUẢNG CÁO FACEBOOK:</b>",
+                f"• <b>Đơn từ Ads:</b> <b>{perf['ad_orders_count']}/{total_orders}</b> đơn (Doanh thu: {ad_rev_fmt}đ)"
+            ]
+            if perf["ad_spend"] > 0:
+                ad_lines.append(f"• <b>Tiền Ads đã chi:</b> {spend_fmt}đ")
+                ad_lines.append(f"• <b>Chi phí / đơn (CPA):</b> <b>{cpa_fmt}đ/đơn</b>")
+                ad_lines.append(f"• <b>Chỉ số ROAS:</b> <b>{perf['roas']}x</b>")
+            else:
+                ad_lines.append("• <i>(Chưa nhập tiền ads: gõ <code>/ads [số tiền]</code> để tính CPA & ROAS)</i>")
+
+            if perf.get("post_breakdown"):
+                ad_lines.append("• <b>Chi tiết theo bài viết:</b>")
+                for pid, pdata in perf["post_breakdown"].items():
+                    p_rev = f"{pdata.get('revenue', 0):,}".replace(",", ".")
+                    p_camp = pdata.get('campaign', 'Facebook Ads')
+                    ad_lines.append(f"  - Post <code>{pid}</code> ({p_camp}): {pdata.get('orders', 0)} đơn - {p_rev}đ")
+            ad_section = "\n" + "\n".join(ad_lines) + "\n"
+    except Exception as e:
+        logger.warning(f"Error computing ad metrics for period report: {e}")
+
     if period_type == "today":
         title = f"📊 <b>BÁO CÁO DOANH THU HÔM NAY ({end_date})</b>"
         body = f"""🛒 <b>Tổng đơn hôm nay:</b> <b>{total_orders}</b> đơn
 👕 <b>Tổng sản phẩm:</b> <b>{total_items}</b> món
 💰 <b>Tổng doanh thu:</b> <b>{rev_formatted}đ</b>
-"""
+{ad_section}"""
         if orders:
             body += "\n📋 <b>Chi tiết đơn hàng hôm nay:</b>\n"
             for idx, o in enumerate(orders, 1):
@@ -397,10 +467,16 @@ def format_period_report(summary: dict) -> str:
                 sdt = html.escape(str(o.get("so_dien_thoai", "")))
                 sl = o.get("so_luong", 0)
                 tien = f"{o.get('tong_tien', 0):,}".replace(",", ".")
+                ad_src = o.get("ad_source")
+                ad_tag = ""
+                if ad_src and isinstance(ad_src, dict):
+                    p_id = ad_src.get("post_id") or ad_src.get("ad_id") or ""
+                    ad_tag = f" 🎯 <i>[Ads: {p_id}]</i>" if p_id else " 🎯 <i>[Ads]</i>"
+
                 if not khach or khach.strip() == "" or khach == "Khách hàng":
-                    body += f"{idx}. <b>Đơn #{idx}</b> (<code>{sdt}</code>): {sl} món - <b>{tien}đ</b>\n"
+                    body += f"{idx}. <b>Đơn #{idx}</b> (<code>{sdt}</code>): {sl} món - <b>{tien}đ</b>{ad_tag}\n"
                 else:
-                    body += f"{idx}. <b>Đơn #{idx}</b> ({khach} - <code>{sdt}</code>): {sl} món - <b>{tien}đ</b>\n"
+                    body += f"{idx}. <b>Đơn #{idx}</b> ({khach} - <code>{sdt}</code>): {sl} món - <b>{tien}đ</b>{ad_tag}\n"
         else:
             body += "\n<i>Hôm nay chưa có đơn hàng nào phát sinh. Chúc shop bội thu! 🔥</i>"
 
@@ -411,7 +487,7 @@ def format_period_report(summary: dict) -> str:
         body = f"""🛒 <b>Tổng số đơn:</b> <b>{total_orders}</b> đơn
 👕 <b>Tổng sản phẩm:</b> <b>{total_items}</b> món
 💰 <b>Tổng doanh thu:</b> <b>{rev_formatted}đ</b>
-"""
+{ad_section}"""
         if daily_breakdown:
             body += "\n📆 <b>Thống kê theo từng ngày:</b>\n"
             for d, data in daily_breakdown.items():
@@ -427,7 +503,7 @@ def format_period_report(summary: dict) -> str:
         body = f"""🛒 <b>Tổng số đơn:</b> <b>{total_orders}</b> đơn
 👕 <b>Tổng sản phẩm:</b> <b>{total_items}</b> món
 💰 <b>Tổng doanh thu:</b> <b>{rev_formatted}đ</b>
-"""
+{ad_section}"""
         if daily_breakdown:
             body += "\n📆 <b>Thống kê các ngày có đơn:</b>\n"
             for d, data in daily_breakdown.items():
@@ -720,6 +796,62 @@ async def handle_telegram_update(update: dict) -> bool:
                     return await send_telegram_message(f"❌ Không tìm thấy mẫu <code>{target_id}</code> trong danh sách!", chat_id=user_chat_id)
             else:
                 return await send_telegram_message("⚠️ Vui lòng ghi rõ mã mẫu cần xóa. Ví dụ: <code>/xoa_mau 48</code>", chat_id=user_chat_id)
+
+        # Nhận diện lệnh nhập chi phí quảng cáo: /ads [số tiền] hoặc /chiphi [số tiền]
+        elif text_lower.startswith(("/ads", "/chiphi", "/adcost", "chi phí ads", "chiphi ads")):
+            from app.services.ad_service import parse_currency_amount, record_ad_spend, calculate_ad_performance
+            from app.services.order_service import get_daily_summary
+            from datetime import datetime
+
+            parts = text.strip().split()
+            amount = None
+            target_post_id = ""
+            today_str = datetime.now().strftime("%Y-%m-%d")
+
+            for p in parts[1:]:
+                if re.match(r"^\d{10,}$", p):
+                    target_post_id = p
+                else:
+                    parsed = parse_currency_amount(p)
+                    if parsed and not amount:
+                        amount = parsed
+
+            if not amount:
+                help_text = (
+                    "ℹ️ <b>HƯỚNG DẪN NHẬP CHI PHÍ QUẢNG CÁO:</b>\n\n"
+                    "Cú pháp: <code>/ads [số tiền]</code> hoặc <code>/ads [post_id] [số tiền]</code>\n\n"
+                    "💡 <b>Ví dụ:</b>\n"
+                    "• <code>/ads 200k</code> (ghi nhận 200.000đ tiền ads hôm nay)\n"
+                    "• <code>/ads 350000</code>\n"
+                    "• <code>/ads 1523979186418810 200k</code> (ghi nhận riêng cho bài viết)\n\n"
+                    "Hệ thống sẽ tự động tính <b>CPA (chi phí trên mỗi đơn)</b> và <b>ROAS</b> trong báo cáo hôm nay!"
+                )
+                return await send_telegram_message(help_text, chat_id=user_chat_id)
+
+            record_ad_spend(amount=amount, date_str=today_str, post_id=target_post_id)
+
+            summary = get_daily_summary(today_str)
+            daily_orders = summary.get("orders", [])
+            perf = calculate_ad_performance(daily_orders, today_str, today_str)
+
+            spend_fmt = f"{perf['ad_spend']:,}".replace(",", ".")
+            cpa_fmt = f"{perf['cpa']:,}".replace(",", ".")
+            ad_rev_fmt = f"{perf['ad_revenue']:,}".replace(",", ".")
+            entered_fmt = f"{amount:,}".replace(",", ".")
+
+            post_info = f"\n📝 <b>Gắn cho bài viết:</b> <code>{target_post_id}</code>" if target_post_id else ""
+
+            msg_res = f"""✅ <b>ĐÃ GHI NHẬN CHI PHÍ ADS NGÀY {today_str}!</b>
+
+💰 <b>Số tiền vừa nhập:</b> <b>{entered_fmt}đ</b>{post_info}
+📊 <b>Tổng tiền Ads hôm nay:</b> <b>{spend_fmt}đ</b>
+
+🛒 <b>Số đơn từ Ads hôm nay:</b> <b>{perf['ad_orders_count']}</b> đơn
+🎯 <b>Chi phí / mỗi đơn (CPA):</b> <b>{cpa_fmt}đ/đơn</b>
+📈 <b>Doanh thu từ Ads:</b> <b>{ad_rev_fmt}đ</b> (ROAS: <b>{perf['roas']}x</b>)
+
+<i>Hệ thống đã cập nhật số liệu này vào Báo cáo doanh thu hôm nay! 💪</i>"""
+            return await send_telegram_message(msg_res, chat_id=user_chat_id)
 
         # Các trường hợp khác: hiển thị menu chính kèm bàn phím
         else:

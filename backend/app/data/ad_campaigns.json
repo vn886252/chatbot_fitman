@@ -4,6 +4,7 @@
     "name": "Áo CBUM Mẫu 46 & 47",
     "ref_keys": ["mau_46", "ao_46", "46", "mau_47", "ao_47", "47"],
     "ad_ids": [],
+    "post_ids": [],
     "title_keywords": ["mẫu 46", "mau 46", "mẫu 47", "mau 47", "áo 46", "ao 46", "áo 47", "ao 47"],
     "model_codes": ["46", "47"],
     "greeting_text": "Dạ em chào anh! Em gửi anh xem chi tiết mẫu áo trong quảng cáo bên em nha! 💪 Mẫu này form chuẩn tôn dáng cực đẹp ạ.\nAnh cho em xin chiều cao và cân nặng để em chọn size vừa vặn nhất cho mình nhé! 💪"
@@ -13,6 +14,7 @@
     "name": "Bộ sưu tập Mẫu Mới",
     "ref_keys": ["mau_moi", "new", "bst_moi", "ao_moi", "mới"],
     "ad_ids": [],
+    "post_ids": [],
     "title_keywords": ["mẫu mới", "mau moi", "bộ sưu tập mới", "áo mới"],
     "model_codes": ["mau_moi"],
     "greeting_text": "Dạ em chào anh! Em gửi anh xem 2 mẫu mới nhất trong bộ sưu tập bên em nha! 💪\nAnh cho em xin chiều cao và cân nặng để em chọn size chuẩn cho mình nhé! 💪"
@@ -22,6 +24,7 @@
     "name": "Quần Short Thể Thao",
     "ref_keys": ["quan_short", "quan", "short", "q1", "q2", "q3", "q4", "q6", "q7"],
     "ad_ids": [],
+    "post_ids": [],
     "title_keywords": ["quần short", "quan short", "quần đùi", "quan dui", "mẫu quần", "mau quan"],
     "model_codes": ["quần"],
     "greeting_text": "Dạ em chào anh! Em gửi anh xem các mẫu quần short thể thao trong quảng cáo bên em nha! 👖 Chất vải co giãn thoáng mát chuyên tập gym và dạo phố ạ.\nAnh cho em xin chiều cao và cân nặng để em chọn size vừa vặn cho mình nha! 💪"
@@ -31,6 +34,7 @@
     "name": "Áo Bóng Rổ Basketball B1 & B2",
     "ref_keys": ["basketball", "bong_ro", "b1", "b2"],
     "ad_ids": [],
+    "post_ids": ["1523979186418810", "1523987709751291", "1523986613084734"],
     "title_keywords": ["basketball", "bóng rổ", "bong ro", "áo basketball"],
     "model_codes": ["B1", "B2"],
     "greeting_text": "Dạ em chào anh! Em gửi anh xem mẫu áo Basketball thể thao trong bài quảng cáo nha! 💪 Bên em có đủ 2 màu đen và trắng form cực chất ạ.\nAnh cho em xin chiều cao và cân nặng để em chọn size chuẩn cho mình nhé! 💪"
@@ -40,6 +44,7 @@
     "name": "Áo Mẫu 30 & 31",
     "ref_keys": ["mau_30", "ao_30", "30", "mau_31", "ao_31", "31"],
     "ad_ids": [],
+    "post_ids": [],
     "title_keywords": ["mẫu 30", "mau 30", "mẫu 31", "mau 31", "áo 30", "ao 30", "áo 31", "ao 31"],
     "model_codes": ["30", "31"],
     "greeting_text": "Dạ em chào anh! Em gửi anh xem mẫu áo trong quảng cáo bên em nha! 💪 Mẫu này form suông thoải mái cực đẹp ạ.\nAnh cho em xin chiều cao và cân nặng để em chọn size vừa vặn nhất cho mình nhé! 💪"
