@@ -63,6 +63,30 @@ async def send_telegram_message(
             if res.status_code == 200:
                 logger.info(f"Telegram message sent successfully to {target_chat_id}.")
                 return True
+            elif res.status_code == 400 and "can't parse entities" in res.text.lower():
+                # Lỗi định dạng HTML entity -> Fallback gửi text thô không parse_mode
+                logger.warning(f"Telegram HTML parse error to {target_chat_id}, retrying as plain text...")
+                plain_payload = {
+                    "chat_id": target_chat_id,
+                    "text": re.sub(r'<[^>]+>', '', text),
+                    "disable_web_page_preview": True
+                }
+                if reply_markup:
+                    plain_payload["reply_markup"] = reply_markup
+                res_plain = await client.post(url, json=plain_payload)
+                if res_plain.status_code == 200:
+                    logger.info(f"Telegram plain text message sent successfully to {target_chat_id}.")
+                    return True
+                else:
+                    logger.error(f"Telegram plain text fallback error {res_plain.status_code}: {res_plain.text}")
+                    return False
+            elif res.status_code == 403:
+                logger.error(
+                    f"[Telegram 403] Bot @Fitman_chatbot đang bị CHẶN bởi user chat_id={target_chat_id}! "
+                    f"Chủ shop cần mở Telegram, vào bot @Fitman_chatbot (https://t.me/Fitman_chatbot) "
+                    f"và bấm 'Start' (hoặc 'Khởi động lại') để cho phép bot gửi tin nhắn. Chi tiết: {res.text}"
+                )
+                return False
             else:
                 logger.error(f"Telegram API error {res.status_code}: {res.text}")
                 return False
@@ -493,6 +517,14 @@ async def handle_telegram_update(update: dict) -> bool:
         # Kiểm tra quyền admin
         if str(user_chat_id) != str(settings.TELEGRAM_CHAT_ID):
             logger.warning(f"Unauthorized Telegram message from chat_id={user_chat_id}")
+            if not settings.TELEGRAM_CHAT_ID or any(cmd in text.lower() for cmd in ["/start", "/id", "/myid", "id", "chat_id"]):
+                reply_txt = (
+                    f"👋 <b>Xin chào!</b> Bot Fitman Sportswear đã nhận được tin nhắn từ bạn.\n\n"
+                    f"🆔 <b>Chat ID Telegram của bạn là:</b> <code>{user_chat_id}</code>\n\n"
+                    f"⚙️ <i>Để kích hoạt quyền Admin nhận thông báo đơn hàng và báo cáo doanh thu, "
+                    f"vui lòng cấu hình ID này vào <b>TELEGRAM_CHAT_ID={user_chat_id}</b> trên Render nhé!</i>"
+                )
+                await send_telegram_message(reply_txt, chat_id=user_chat_id)
             return False
 
         # 1. Xử lý khi admin gửi ẢNH để thêm mẫu mới

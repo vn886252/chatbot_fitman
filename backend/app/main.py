@@ -19,7 +19,8 @@ from app.services.llm_service import generate_response
 from app.services.telegram_service import (
     send_daily_revenue_report,
     send_telegram_menu,
-    handle_telegram_update
+    handle_telegram_update,
+    REPLY_KEYBOARD
 )
 import httpx
 import json
@@ -80,8 +81,8 @@ async def _telegram_polling_loop():
     Background polling loop gọi Telegram getUpdates để nhận tin nhắn và nút bấm trực tiếp từ chủ shop.
     Chạy song song, hoạt động ngay cả khi chạy local (không cần IP public hay ngrok).
     """
-    if not settings.TELEGRAM_BOT_TOKEN or not settings.TELEGRAM_CHAT_ID:
-        logger.info("Telegram not fully configured, polling loop skipped.")
+    if not settings.TELEGRAM_BOT_TOKEN:
+        logger.info("Telegram BOT_TOKEN not configured, polling loop skipped.")
         return
 
     offset = 0
@@ -447,6 +448,103 @@ async def telegram_webhook(update: Dict[str, Any]):
     """Endpoint Webhook tiếp nhận tin nhắn & sự kiện bấm nút từ Telegram Bot."""
     handled = await handle_telegram_update(update)
     return {"status": "ok", "handled": handled}
+
+@app.api_route("/api/telegram/status", methods=["GET", "POST"])
+@app.api_route("/api/telegram/test", methods=["GET", "POST"])
+async def test_telegram_connection():
+    """
+    Endpoint kiểm tra trực tiếp kết nối Telegram Bot và gửi tin nhắn test tới chủ shop.
+    Phát hiện và hướng dẫn chi tiết nếu bị lỗi 403 (bị user chặn) hoặc thiếu cấu hình.
+    """
+    token = settings.TELEGRAM_BOT_TOKEN
+    chat_id = settings.TELEGRAM_CHAT_ID
+
+    if not token:
+        return {
+            "success": False,
+            "error": "TELEGRAM_BOT_TOKEN chưa được cấu hình!",
+            "solution": "Vui lòng kiểm tra TELEGRAM_BOT_TOKEN trong file .env hoặc trên Render Dashboard."
+        }
+
+    # 1. Kiểm tra getMe với Telegram API
+    bot_info = {}
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        try:
+            me_res = await client.get(f"https://api.telegram.org/bot{token}/getMe")
+            if me_res.status_code == 200:
+                bot_info = me_res.json().get("result", {})
+            else:
+                return {
+                    "success": False,
+                    "error": f"Token Telegram không hợp lệ hoặc lỗi API ({me_res.status_code})",
+                    "details": me_res.text
+                }
+        except Exception as ex:
+            return {
+                "success": False,
+                "error": f"Không thể kết nối tới api.telegram.org: {ex}"
+            }
+
+    if not chat_id:
+        return {
+            "success": False,
+            "bot_username": bot_info.get("username"),
+            "bot_name": bot_info.get("first_name"),
+            "error": "TELEGRAM_CHAT_ID chưa được cấu hình!",
+            "solution": f"Vui lòng mở Telegram, nhắn tin cho @{bot_info.get('username')} để nhận Chat ID của bạn, rồi cấu hình TELEGRAM_CHAT_ID."
+        }
+
+    # 2. Thử gửi tin nhắn test tới chat_id
+    test_msg = (
+        "🔔 <b>[FITMAN TEST] KẾT NỐI TELEGRAM BOT THÀNH CÔNG!</b>\n\n"
+        "✅ Facebook Chatbot và Website Fitman đã kết nối thông suốt với Telegram của bạn.\n"
+        f"🤖 <b>Bot:</b> @{bot_info.get('username', 'Fitman_chatbot')}\n"
+        f"🆔 <b>Chat ID của bạn:</b> <code>{chat_id}</code>\n\n"
+        "Khi có khách đặt hàng hoặc khách cần hỗ trợ trên Fanpage, bot sẽ thông báo ngay tại đây! 💪"
+    )
+
+    send_url = f"https://api.telegram.org/bot{token}/sendMessage"
+    payload = {
+        "chat_id": str(chat_id),
+        "text": test_msg,
+        "parse_mode": "HTML",
+        "disable_web_page_preview": True,
+        "reply_markup": REPLY_KEYBOARD
+    }
+
+    async with httpx.AsyncClient(timeout=15.0) as client:
+        try:
+            send_res = await client.post(send_url, json=payload)
+            if send_res.status_code == 200:
+                return {
+                    "success": True,
+                    "message": f"Đã gửi tin nhắn test thành công tới Telegram Chat ID {chat_id}!",
+                    "bot_username": bot_info.get("username"),
+                    "bot_name": bot_info.get("first_name"),
+                    "chat_id": chat_id
+                }
+            elif send_res.status_code == 403:
+                return {
+                    "success": False,
+                    "error_code": 403,
+                    "bot_username": bot_info.get("username"),
+                    "chat_id": chat_id,
+                    "error": "Forbidden: bot was blocked by the user",
+                    "solution": f"Bạn đang chặn (hoặc chưa bấm Bắt đầu) bot @{bot_info.get('username')} trên Telegram. Hãy mở Telegram, vào bot @{bot_info.get('username')} (https://t.me/{bot_info.get('username')}) và bấm 'Start' (hoặc 'Khởi động lại') để mở chặn!"
+                }
+            else:
+                return {
+                    "success": False,
+                    "error_code": send_res.status_code,
+                    "bot_username": bot_info.get("username"),
+                    "chat_id": chat_id,
+                    "error": send_res.text
+                }
+        except Exception as ex:
+            return {
+                "success": False,
+                "error": f"Lỗi khi gửi tin nhắn test: {ex}"
+            }
 
 if __name__ == "__main__":
     import uvicorn

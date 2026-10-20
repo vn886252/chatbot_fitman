@@ -281,3 +281,47 @@ def test_telegram_webhook_endpoint():
         assert res.status_code == 200
         assert res.json() == {"status": "ok", "handled": True}
         mock_handle.assert_called_once()
+
+
+def test_telegram_test_endpoint_success():
+    """Kiểm tra GET /api/telegram/test khi bot hoạt động bình thường."""
+    client = TestClient(app)
+    with patch("httpx.AsyncClient.get") as mock_get, patch("httpx.AsyncClient.post") as mock_post:
+        # Giả lập getMe trả về 200
+        mock_get.return_value = MagicMock(
+            status_code=200,
+            json=lambda: {"result": {"username": "Fitman_chatbot", "first_name": "Fitman Bot"}}
+        )
+        # Giả lập sendMessage trả về 200
+        mock_post.return_value = MagicMock(
+            status_code=200,
+            json=lambda: {"ok": True}
+        )
+
+        res = client.get("/api/telegram/test")
+        assert res.status_code == 200
+        data = res.json()
+        assert data.get("success") is True
+        assert data.get("bot_username") == "Fitman_chatbot"
+
+
+def test_telegram_test_endpoint_blocked_403():
+    """Kiểm tra GET /api/telegram/test phát hiện lỗi 403 khi bot bị user chặn."""
+    client = TestClient(app)
+    with patch("httpx.AsyncClient.get") as mock_get, patch("httpx.AsyncClient.post") as mock_post:
+        mock_get.return_value = MagicMock(
+            status_code=200,
+            json=lambda: {"result": {"username": "Fitman_chatbot", "first_name": "Fitman Bot"}}
+        )
+        mock_post.return_value = MagicMock(
+            status_code=403,
+            text='{"ok":false,"error_code":403,"description":"Forbidden: bot was blocked by the user"}'
+        )
+
+        res = client.get("/api/telegram/test")
+        assert res.status_code == 200
+        data = res.json()
+        assert data.get("success") is False
+        assert data.get("error_code") == 403
+        assert "solution" in data
+
