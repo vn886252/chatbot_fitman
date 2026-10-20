@@ -35,6 +35,15 @@ class TestTinhSize:
         assert result["chieu_cao"] == 1.60
         assert result["size"] == "Áo L, Quần L"
 
+    def test_size_100kg(self):
+        result = tinh_size(100, 1.75, "áo")
+        assert result["size"] == "Áo XL"
+        assert "100" in result["ly_do"]
+
+    def test_size_no_height(self):
+        result = tinh_size(can_nang=100, loai_san_pham="áo")
+        assert result["size"] == "Áo XL"
+
     def test_invalid_inputs(self):
         with pytest.raises(ValueError):
             tinh_size(can_nang=0, chieu_cao=1.70)

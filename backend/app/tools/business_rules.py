@@ -269,12 +269,18 @@ def tim_anh_san_pham(ma_san_pham_hoac_tu_khoa: str) -> Dict[str, Any]:
     }
 
 
-def tinh_size(can_nang: float, chieu_cao: float, loai_san_pham: str = "cả hai") -> dict:
-    if can_nang <= 0 or chieu_cao <= 0:
-        raise ValueError("Cân nặng và chiều cao phải lớn hơn 0")
+def tinh_size(can_nang: float, chieu_cao: Optional[float] = None, loai_san_pham: str = "cả hai") -> dict:
+    if can_nang <= 0:
+        raise ValueError("Cân nặng phải lớn hơn 0")
+    if chieu_cao is not None and chieu_cao <= 0:
+        raise ValueError("Chiều cao phải lớn hơn 0")
     
-    if chieu_cao > 3:
-        chieu_cao = chieu_cao / 100
+    has_height = chieu_cao is not None and chieu_cao > 0
+    if has_height:
+        if chieu_cao > 3:
+            chieu_cao = chieu_cao / 100
+    else:
+        chieu_cao = 1.70  # Chiều cao trung bình giả định
 
     # --- Size Áo ---
     if can_nang < 60:
@@ -286,9 +292,9 @@ def tinh_size(can_nang: float, chieu_cao: float, loai_san_pham: str = "cả hai"
     else:
         ao = "XL"
 
-    # Upsize áo nếu chiều cao < 1.65
+    # Upsize áo nếu chiều cao < 1.65 (chỉ khi có chiều cao thực tế)
     ly_do = ""
-    if chieu_cao < 1.65:
+    if has_height and chieu_cao < 1.65:
         upsize_map = {"S": "M", "M": "L", "L": "XL", "XL": "XL"}
         ao = upsize_map[ao]
         ly_do = "Chiều cao dưới 1m65 nên tự động up 1 size áo để mặc thoải mái. "
@@ -302,6 +308,10 @@ def tinh_size(can_nang: float, chieu_cao: float, loai_san_pham: str = "cả hai"
     else:
         quan = "XL"
 
+    # Ghi chú form rộng cho khách nặng ký (>= 90kg, 100kg+)
+    if can_nang >= 90:
+        ly_do += f"Form Oversize CBUM rộng rãi, vai to giấu bụng cực tốt, người {can_nang}kg mặc size XL vừa vặn thoải mái!"
+
     # --- Trả kết quả theo loại sản phẩm ---
     if loai_san_pham == "áo":
         final_size = f"Áo {ao}"
@@ -313,8 +323,8 @@ def tinh_size(can_nang: float, chieu_cao: float, loai_san_pham: str = "cả hai"
     return {
         "size": final_size,
         "can_nang": can_nang,
-        "chieu_cao": chieu_cao,
-        "ly_do": ly_do + f"Form chuẩn theo {can_nang}kg."
+        "chieu_cao": chieu_cao if has_height else 1.70,
+        "ly_do": ly_do if ly_do else f"Form chuẩn theo {can_nang}kg."
     }
 
 

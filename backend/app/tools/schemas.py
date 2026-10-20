@@ -5,17 +5,17 @@ FITMAN_TOOLS = [
         "type": "function",
         "function": {
             "name": "tinh_size",
-            "description": "Tính size quần áo chuẩn xác cho khách hàng dựa trên cân nặng (kg) và chiều cao (mét hoặc cm). Bắt buộc gọi hàm này khi khách hỏi tư vấn size hoặc cung cấp chiều cao cân nặng.",
+            "description": "Tính size quần áo chuẩn xác cho khách hàng dựa trên cân nặng (kg) và chiều cao (mét hoặc cm, nếu có). Khách chỉ cần nói cân nặng (ví dụ: 'có size 100kg không', 'anh 95kg mặc size gì') là gọi ngay hàm này để lấy size chuẩn.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "can_nang": {
                         "type": "number",
-                        "description": "Cân nặng tính bằng kg (ví dụ: 68, 75)"
+                        "description": "Cân nặng tính bằng kg (ví dụ: 68, 75, 90, 100)"
                     },
                     "chieu_cao": {
                         "type": "number",
-                        "description": "Chiều cao tính bằng mét (ví dụ: 1.65, 1.7) hoặc cm (165, 170)"
+                        "description": "Chiều cao tính bằng mét (ví dụ: 1.65, 1.7) hoặc cm (165, 170). Không bắt buộc nếu khách chưa cung cấp."
                     },
                     "loai_san_pham": {
                         "type": "string",
@@ -23,7 +23,7 @@ FITMAN_TOOLS = [
                         "description": "Loại sản phẩm khách muốn tư vấn size (áo, quần, hoặc cả hai nếu mua nguyên bộ)."
                     }
                 },
-                "required": ["can_nang", "chieu_cao", "loai_san_pham"]
+                "required": ["can_nang", "loai_san_pham"]
             }
         }
     },
