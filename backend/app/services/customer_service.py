@@ -65,7 +65,15 @@ def save_customer_profile(sender_id: str, data_dict: Optional[Dict[str, Any]] = 
         "chieu_cao",
         "can_nang",
         "size_ao",
-        "size_quan"
+        "size_quan",
+        "source",
+        "ad_id",
+        "ad_title",
+        "ad_ref",
+        "ad_campaign_name",
+        "ad_models",
+        "ad_photo_url",
+        "first_ad_click_at"
     ]
 
     for field in valid_fields:
@@ -90,9 +98,12 @@ def format_customer_memory_context(profile: Optional[Dict[str, Any]]) -> str:
     if not profile:
         return ""
 
-    # Kiểm tra xem có ít nhất một thông tin quan trọng (SĐT, địa chỉ, chiều cao, cân nặng)
+    # Kiểm tra xem có ít nhất một thông tin quan trọng
     has_useful_info = any(
-        profile.get(k) for k in ["so_dien_thoai", "dia_chi", "chieu_cao", "can_nang", "size_ao", "size_quan"]
+        profile.get(k) for k in [
+            "so_dien_thoai", "dia_chi", "chieu_cao", "can_nang",
+            "size_ao", "size_quan", "ad_campaign_name", "ad_models"
+        ]
     )
     if not has_useful_info:
         return ""
@@ -100,6 +111,10 @@ def format_customer_memory_context(profile: Optional[Dict[str, Any]]) -> str:
     lines = []
     if profile.get("ten_khach_hang"):
         lines.append(f"- Tên khách hàng: {profile['ten_khach_hang']}")
+    if profile.get("ad_campaign_name"):
+        ad_m = profile.get("ad_models")
+        ad_m_str = f" (Mẫu quan tâm: {', '.join(ad_m) if isinstance(ad_m, list) else ad_m})" if ad_m else ""
+        lines.append(f"- Nguồn khách: Vào từ bài quảng cáo Facebook '{profile['ad_campaign_name']}'{ad_m_str}")
     if profile.get("chieu_cao") and profile.get("can_nang"):
         lines.append(f"- Số đo cơ thể đã lưu: Cao {profile['chieu_cao']}m, Nặng {profile['can_nang']}kg")
     elif profile.get("chieu_cao"):
@@ -124,11 +139,16 @@ def format_customer_memory_context(profile: Optional[Dict[str, Any]]) -> str:
 
     info_str = "\n".join(lines)
 
+    ad_rule = ""
+    if profile.get("ad_models"):
+        ad_m_val = ', '.join(profile['ad_models']) if isinstance(profile['ad_models'], list) else profile['ad_models']
+        ad_rule = f"\n0. Khách hàng này vào từ bài quảng cáo mẫu: {ad_m_val}. Khi khách hỏi chung về giá, mẫu hay size, ƯU TIÊN tư vấn đúng mẫu {ad_m_val} này!"
+
     context = f"""
 === 👤 HỒ SƠ KHÁCH HÀNG CŨ (HỆ THỐNG ĐÃ GHI NHỚ) ===
 {info_str}
 
-QUY TẮC PHỤC VỤ KHÁCH HÀNG CŨ:
+QUY TẮC PHỤC VỤ KHÁCH HÀNG:{ad_rule}
 1. Nếu khách đã có số đo / size cũ: Không bắt khách khai lại số đo từ đầu. Khi khách chọn mẫu mới, có thể nhắc nhẹ: "Dạ đợt trước anh lấy size {profile.get('size_ao', 'M')} (hoặc Quần {profile.get('size_quan', 'M')}), đợt này anh vẫn lấy size đó đúng không ạ?"
 2. Khi khách yêu cầu "giao địa chỉ cũ", "gửi chỗ cũ", "thông tin cũ" HOẶC khi đến bước chốt đơn mà khách không nói địa chỉ mới:
    👉 BẮT BUỘC bạn phải CHỦ ĐỘNG XÁC NHẬN lại thông tin cũ:

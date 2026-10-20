@@ -162,6 +162,22 @@ def save_order(order_data: dict) -> dict:
         logger.warning(f"Từ chối lưu đơn hàng không hợp lệ: tiền={tong_tien}, SĐT={clean_phone}, địa chỉ={clean_addr}")
         return None
 
+    # Kiểm tra xem khách hàng có nguồn từ quảng cáo không
+    sid = str(order_data.get("sender_id") or "").strip()
+    ad_source = None
+    if sid:
+        try:
+            from app.services.customer_service import get_customer_profile
+            prof = get_customer_profile(sid)
+            if prof and (prof.get("ad_campaign_name") or prof.get("ad_id") or prof.get("ad_ref")):
+                ad_source = {
+                    "campaign": prof.get("ad_campaign_name") or "Quảng cáo Facebook",
+                    "ad_id": prof.get("ad_id", ""),
+                    "ad_ref": prof.get("ad_ref", "")
+                }
+        except Exception:
+            pass
+
     order = {
         "id": order_id,
         "order_number_today": order_number_today,
@@ -173,13 +189,15 @@ def save_order(order_data: dict) -> dict:
         "tong_tien": tong_tien,
         "so_dien_thoai": str(order_data.get("so_dien_thoai") or "").strip(),
         "dia_chi": clean_addr,
-        "sender_id": str(order_data.get("sender_id") or "").strip(),
+        "sender_id": sid,
         "is_updated": False,
         "phuong_thuc_thanh_toan": order_data.get("phuong_thuc_thanh_toan", "COD"),
         "items_detail": order_data.get("items_detail", []),
         "ghi_chu": str(order_data.get("ghi_chu") or "").strip(),
         "trang_thai": str(order_data.get("trang_thai") or "Đã tiếp nhận")
     }
+    if ad_source:
+        order["ad_source"] = ad_source
 
     orders.append(order)
 

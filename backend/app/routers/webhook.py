@@ -159,6 +159,82 @@ async def handle_webhook(request: Request):
                         record_last_customer(recipient_id)
 
                 # -------------------------------------------------------------
+                # 1c. Xử lý sự kiện khách vào từ Quảng cáo Facebook (Ads Referral / CTM)
+                # -------------------------------------------------------------
+                postback = event.get("postback", {})
+                referral = event.get("referral") or message.get("referral") or postback.get("referral")
+                if not referral and postback.get("payload"):
+                    p_load = str(postback.get("payload") or "").strip()
+                    if p_load:
+                        referral = {"ref": p_load, "source": "ADS"}
+
+                if sender_id and referral:
+                    from app.services.ad_service import resolve_ad_campaign
+                    from app.services.customer_service import save_customer_profile
+                    from app.services.telegram_service import send_ad_referral_alert
+                    from datetime import datetime
+
+                    campaign = resolve_ad_campaign(referral)
+                    if campaign:
+                        logger.info(
+                            f"[Ad Referral] Customer {sender_id} entered via ad: "
+                            f"{campaign.get('name')} (ref={campaign.get('ad_ref')}, ad_id={campaign.get('ad_id')})"
+                        )
+                        save_customer_profile(
+                            sender_id,
+                            source="facebook_ads",
+                            ad_id=campaign.get("ad_id", ""),
+                            ad_title=campaign.get("ad_title", ""),
+                            ad_ref=campaign.get("ad_ref", ""),
+                            ad_campaign_name=campaign.get("name", ""),
+                            ad_models=campaign.get("model_codes", []),
+                            ad_photo_url=campaign.get("photo_url", ""),
+                            first_ad_click_at=datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                        )
+
+                        # Gửi thông báo đến Telegram cho chủ shop
+                        try:
+                            customer_name = await get_customer_name(sender_id)
+                            await send_ad_referral_alert(
+                                customer_id=sender_id,
+                                customer_name=customer_name,
+                                campaign_name=campaign.get("name", "Quảng cáo Fitman"),
+                                ad_id=campaign.get("ad_id", ""),
+                                ad_ref=campaign.get("ad_ref", ""),
+                                model_codes=campaign.get("model_codes", []),
+                                ad_title=campaign.get("ad_title", ""),
+                                photo_url=campaign.get("photo_url")
+                            )
+                        except Exception as alert_ex:
+                            logger.warning(f"Error sending ad referral alert: {alert_ex}")
+
+                        # Kiểm tra câu hỏi mặc định của Icebreaker
+                        msg_txt = str(message.get("text") or "").strip().lower()
+                        is_ad_icebreaker = any(msg_txt == q for q in [
+                            "tôi muốn tư vấn mẫu này", "toi muon tu van mau nay",
+                            "tư vấn mẫu này", "tu van mau nay",
+                            "báo giá mẫu này", "bao gia mau nay",
+                            "cho tôi xem mẫu này", "cho toi xem mau nay",
+                            "tôi muốn tìm hiểu thêm", "toi muon tim hieu them",
+                            "có ai ở đây không", "co ai o day khong",
+                            "shop ơi", "shop oi", "hello", "hi", "xin chào"
+                        ])
+
+                        if event.get("referral") or event.get("postback") or not message.get("text") or is_ad_icebreaker:
+                            paused, _ = is_bot_paused(sender_id)
+                            if not paused:
+                                greeting = campaign.get("greeting_text")
+                                images = campaign.get("resolved_images") or []
+                                if greeting:
+                                    await send_text_message(sender_id, greeting)
+                                    if message.get("text"):
+                                        _conversation_history[sender_id].append({"role": "user", "content": message["text"]})
+                                    _conversation_history[sender_id].append({"role": "assistant", "content": greeting})
+                                for img in images:
+                                    await send_image_message(sender_id, img, notification_type="SILENT_PUSH")
+                            continue
+
+                # -------------------------------------------------------------
                 # 2. Xử lý tin nhắn từ Khách hàng
                 # -------------------------------------------------------------
                 user_text = message.get("text")

@@ -152,10 +152,16 @@ async def send_new_order_notification(order: Dict[str, Any]) -> bool:
     else:
         customer_info = f"👤 <b>Khách hàng:</b> {ten_khach} (<code>{sdt}</code>)"
 
+    ad_src = order.get("ad_source")
+    ad_line = ""
+    if ad_src and isinstance(ad_src, dict):
+        camp = html.escape(str(ad_src.get("campaign") or "Facebook Ads"))
+        ad_line = f"\n🎯 <b>Nguồn đơn:</b> Quảng cáo Facebook (<b>{camp}</b>)"
+
     msg = f"""{title}
 🔖 <b>Mã đơn:</b> <code>{order_id}</code>
 
-{customer_info}
+{customer_info}{ad_line}
 📍 <b>Địa chỉ:</b> {dia_chi}
 📦 <b>Số lượng:</b> {so_luong} món
 📋 <b>Chi tiết món:</b>
@@ -323,6 +329,47 @@ async def send_handover_alert(
             return True
 
     return await send_telegram_message(msg, reply_markup=handover_keyboard)
+
+
+async def send_ad_referral_alert(
+    customer_id: str,
+    customer_name: str,
+    campaign_name: str,
+    ad_id: str = "",
+    ad_ref: str = "",
+    model_codes: Optional[List[str]] = None,
+    ad_title: str = "",
+    photo_url: Optional[str] = None
+) -> bool:
+    """
+    Gửi thông báo Telegram khi có khách hàng mới bấm vào từ bài quảng cáo Facebook.
+    """
+    c_name = html.escape(str(customer_name or "Khách hàng"))
+    c_id = html.escape(str(customer_id or ""))
+    camp = html.escape(str(campaign_name or "Quảng cáo Fitman"))
+    ref_txt = html.escape(str(ad_ref or "Không có"))
+    aid_txt = html.escape(str(ad_id or "Không có"))
+    models_txt = html.escape(', '.join(model_codes)) if model_codes else "Mẫu mới"
+
+    msg = f"""🎯 <b>KHÁCH HÀNG VÀO TỪ QUẢNG CÁO FACEBOOK!</b>
+👤 <b>Khách hàng:</b> {c_name}
+🆔 <b>ID:</b> <code>{c_id}</code>
+📢 <b>Chiến dịch:</b> <b>{camp}</b>
+🏷️ <b>Mã Ref:</b> <code>{ref_txt}</code>
+🆔 <b>Ad ID:</b> <code>{aid_txt}</code>
+🖼️ <b>Mẫu gửi cho khách:</b> <b>{models_txt}</b>
+
+💡 <i>Bot đã tự động gửi ảnh mẫu quảng cáo và mời khách chọn size/chốt đơn!</i>"""
+
+    if photo_url and str(photo_url).startswith("http"):
+        try:
+            photo_sent = await send_telegram_photo(photo_url, caption=msg)
+            if photo_sent:
+                return True
+        except Exception:
+            pass
+
+    return await send_telegram_message(msg)
 
 
 def format_period_report(summary: dict) -> str:

@@ -476,22 +476,37 @@ async def generate_response(
                 if q_img not in suggested_images:
                     suggested_images.append(q_img)
 
-        # Khách mới chat hỏi mẫu hoặc hỏi xem mẫu áo -> CHỈ GỬI ĐÚNG 2 ẢNH MÃ MỚI THÔI
+        # Khách mới chat hỏi mẫu hoặc hỏi xem mẫu áo -> Ưu tiên ảnh mẫu của Ads nếu có, hoặc gửi đúng 2 ảnh mã mới
         elif any(k in lower_user for k in [
             "mẫu mới", "mau moi", "mẫu áo mới", "mau ao moi", "áo mới", "ao moi", "mới nhất", "moi nhat",
             "cho xem mẫu", "xem mẫu", "mẫu đâu", "cho xem mau", "xem mau", "sản phẩm", "san pham",
             "xem ảnh áo", "ảnh áo", "xem mẫu áo", "cac mau ao", "các mẫu áo", "cho xem áo", "xem ao",
             "gửi áo", "gửi mẫu áo", "mẫu áo", "mau ao", "có mẫu nào", "co mau nao", "shop có mẫu", "gửi mẫu", "gui mau"
         ]) or (bool(re.search(r'\b(mới|moi|new)\b', lower_user)) and not bool(re.search(r'\bnew_\d+\b', lower_user))):
-            try:
-                from app.services.new_models_service import get_new_models
-                new_m = get_new_models()
-                for m in new_m[:2]:
-                    img = m.get("image_url")
-                    if img and img not in suggested_images:
-                        suggested_images.append(img)
-            except Exception:
-                pass
+            ad_models = customer_profile.get("ad_models") if customer_profile else None
+            if ad_models:
+                try:
+                    from app.tools.business_rules import tim_anh_san_pham
+                    for c in ad_models:
+                        res = tim_anh_san_pham(str(c))
+                        for img in res.get("image_urls", []):
+                            if img and img not in suggested_images:
+                                suggested_images.append(img)
+                        if len(suggested_images) >= 2:
+                            break
+                except Exception:
+                    pass
+
+            if not suggested_images:
+                try:
+                    from app.services.new_models_service import get_new_models
+                    new_m = get_new_models()
+                    for m in new_m[:2]:
+                        img = m.get("image_url")
+                        if img and img not in suggested_images:
+                            suggested_images.append(img)
+                except Exception:
+                    pass
             if not suggested_images:
                 suggested_images = ["/static/products/mau_moi_1.png", "/static/products/mau_moi_2.png"]
             suggested_images = suggested_images[:2]
