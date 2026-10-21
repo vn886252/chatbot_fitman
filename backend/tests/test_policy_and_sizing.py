@@ -23,6 +23,7 @@ def test_system_prompt_size_rules():
     assert "XL" in prompt
     # Khách hỏi áo có size nào
     assert "S, M, L, XL" in prompt
+    assert "55kg - 105kg" in prompt
     assert "CẤM nói có size XXL" in prompt or "CẤM NÓI CÓ XXL" in prompt
 
 def test_tinh_size_100kg_xl():

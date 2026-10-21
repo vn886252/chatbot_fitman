@@ -405,6 +405,8 @@ async def generate_response(
     # Gộp 2+ dòng trống liên tiếp thành 1 dòng trống duy nhất
     reply_text = re.sub(r'\n{2,}', '\n\n', reply_text).strip()
 
+    lower_user = user_message.lower()
+
     # Tự động rút gọn câu giới thiệu mẫu dài dòng nếu LLM vô tình lặp lại
     reply_text = re.sub(
         r'(?i)Dạ em gửi (?:anh|chị|bạn) xem các mẫu áo (?:CBUM và Wolves|CBUM|Wolves)\s*ạ!\s*(?:Anh|Chị|Bạn) xem qua ảnh rồi ưng mẫu số mấy nhắn em nhé!\s*Đồng thời (?:anh|chị|bạn) cho em xin chiều cao và cân nặng để em tư vấn size chuẩn cho mình luôn nha!\s*[👕💪]*',
@@ -417,8 +419,15 @@ async def generate_response(
         reply_text
     )
 
+    # Chuẩn hóa câu trả lời khi khách hỏi size nào / có những size gì (theo yêu cầu của chủ shop: cực kỳ ngắn gọn)
+    is_asking_size_options = any(k in lower_user for k in [
+        "size nào", "size nao", "những size nào", "nhung size nao", "size gì", "size gi", "mấy size", "may size", "các size", "cac size"
+    ]) and not (known_weight or known_size) and not any(k in lower_user for k in ["bảng size", "bang size", "size chart", "bảng số đo", "bang so do"])
+    if is_asking_size_options:
+        if any(w in reply_text for w in ["Size S:", "Size M:", "Size L:", "Size XL:", "dưới 62kg", "62 - 72kg", "•"]) or len(reply_text) > 130:
+            reply_text = "Dạ shop có các size S, M, L, XL từ 55kg - 105kg, anh cho em chiều cao cân nặng em tư vấn size cho chuẩn anh nha! 💪"
+
     # Bổ sung ảnh từ keyword trong câu chat (CHỈ KHI khách hỏi xem ảnh / xem mẫu)
-    lower_user = user_message.lower()
 
     # KIỂM TRA 1: Khách CHỈ HỎI CÒN HÀNG HAY KHÔNG (ví dụ: 'mẫu áo basketball màu đen còn ko shop', 'màu đen còn không', 'còn size L không')
     # TUYỆT ĐỐI KHÔNG gửi bất kỳ hình ảnh nào!
