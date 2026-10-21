@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 def _get_base_url() -> str:
     if settings.SERVER_BASE_URL and "your-app-name" not in settings.SERVER_BASE_URL:
         return settings.SERVER_BASE_URL.rstrip("/")
-    return "https://fitman.vn"
+    return "https://chatbot-fitman.onrender.com"
 
 
 def _resolve_image_url(image_path: str) -> str:

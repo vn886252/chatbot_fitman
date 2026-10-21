@@ -211,15 +211,18 @@ async def handle_webhook(request: Request):
                         except Exception as alert_ex:
                             logger.warning(f"Error sending ad referral alert: {alert_ex}")
 
-                        # Kiểm tra câu hỏi mặc định của Icebreaker
+                        # Kiểm tra câu hỏi mặc định của Icebreaker từ Facebook Ads
                         msg_txt = str(message.get("text") or "").strip().lower()
-                        is_ad_icebreaker = any(msg_txt == q for q in [
-                            "tôi muốn tư vấn mẫu này", "toi muon tu van mau nay",
+                        is_ad_icebreaker = any(q in msg_txt for q in [
+                            "quan tâm đến sản phẩm", "quan tam den san pham",
+                            "quan tâm đến mặt hàng", "quan tam den mat hang",
+                            "cho tôi biết thêm thông tin", "cho toi biet them thong tin",
                             "tư vấn mẫu này", "tu van mau nay",
                             "báo giá mẫu này", "bao gia mau nay",
                             "cho tôi xem mẫu này", "cho toi xem mau nay",
-                            "tôi muốn tìm hiểu thêm", "toi muon tim hieu them",
+                            "tìm hiểu thêm", "tim hieu them",
                             "có ai ở đây không", "co ai o day khong",
+                            "có ai để chat không", "co ai de chat khong",
                             "shop ơi", "shop oi", "hello", "hi", "xin chào"
                         ])
 

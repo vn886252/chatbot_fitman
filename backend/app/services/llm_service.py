@@ -390,6 +390,14 @@ async def generate_response(
     reply_text = re.sub(r'!\[.*?\]\(.*?\)', '', reply_text).strip()
     # Xóa markdown link thường [text](url) mà LLM có thể chèn
     reply_text = re.sub(r'\[([^\]]*)\]\((?:https?://)?\S+\)', r'\1', reply_text).strip()
+    # Xóa HTML tags nếu LLM lỡ sinh ra
+    reply_text = re.sub(r'<[^>]+>', '', reply_text)
+    # Xóa code block nếu LLM lỡ sinh ra
+    reply_text = re.sub(r'```.*?```', '', reply_text, flags=re.DOTALL)
+    # Xóa markdown bold **text** -> text (Facebook Messenger trên điện thoại không hỗ trợ ** nên sẽ hiện nguyên dấu sao gây khó đọc)
+    reply_text = re.sub(r'\*\*(.*?)\*\*', r'\1', reply_text)
+    # Xóa markdown heading #
+    reply_text = re.sub(r'(?m)^#{1,6}\s*', '', reply_text)
     # Xóa các dòng mồ côi chỉ chứa dấu gạch đầu dòng, dấu chấm tròn (do strip ảnh để lại, ví dụ: '-' hoặc '*' hoặc '•')
     reply_text = re.sub(r'(?m)^[ \t]*[-*•–—:][ \t]*$', '', reply_text)
     # Xóa dòng chỉ chứa khoảng trắng (space/tab) thành dòng trống thật

@@ -24,7 +24,7 @@ class Settings(BaseSettings):
     USE_LOCAL_LLM: bool = Field(default=False)
     QWEN_API_BASE: str = Field(default="http://127.0.0.1:5001/v1")
     QWEN_FALLBACK_PORT: int = Field(default=8888)
-    SERVER_BASE_URL: str = Field(default="")
+    SERVER_BASE_URL: str = Field(default="https://chatbot-fitman.onrender.com")
     TELEGRAM_BOT_TOKEN: str = Field(default="")
     TELEGRAM_CHAT_ID: str = Field(default="")
     HANDOVER_TIMEOUT_HOURS: int = Field(default=2)
