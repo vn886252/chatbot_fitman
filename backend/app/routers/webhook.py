@@ -131,7 +131,28 @@ async def handle_webhook(request: Request):
                     if is_from_bot:
                         continue
 
-                    # Nếu KHÔNG phải Bot gửi -> Chắc chắn 100% là NGƯỜI THẬT (Admin/Chủ shop) nhắn qua Page Inbox!
+                    # Bỏ qua các tin nhắn tự động từ hệ thống Facebook (Meta Automations, Ads Templates, Call Suggestion)
+                    # TUYỆT ĐỐI KHÔNG coi đây là Người thật nhắn để tránh dừng bot oan!
+                    is_meta_automated = any(k in human_text.lower() for k in [
+                        "hãy gọi ngay để được phục vụ nhanh hơn",
+                        "hay goi ngay de duoc phuc vu nhanh hon",
+                        "gọi cho fitman",
+                        "goi cho fitman",
+                        "gợi ý gọi thoại",
+                        "goi y goi thoai",
+                        "bạn có thắc mắc nào cần trao đổi",
+                        "ban co thac mac nao can trao doi",
+                        "bạn đang tìm mẫu áo thun",
+                        "ban dang tim mau ao thun",
+                        "tin trả lời quảng cáo",
+                        "tin tra loi quang cao",
+                        "gọi cho"
+                    ])
+                    if is_meta_automated:
+                        logger.info(f"[Handover] Ignored Meta automated echo: '{human_text[:60]}'. Bot will NOT pause.")
+                        continue
+
+                    # Nếu KHÔNG phải Bot gửi và không phải Meta auto -> Chắc chắn 100% là NGƯỜI THẬT (Admin/Chủ shop) nhắn qua Page Inbox!
                     # LẬP TỨC DỪNG BOT VỚI KHÁCH NÀY!
                     if customer_id:
                         record_last_customer(customer_id)
