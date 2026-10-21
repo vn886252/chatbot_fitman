@@ -533,34 +533,89 @@ async def generate_response(
             if "/static/products/bang_size.jpg" not in suggested_images:
                 suggested_images.append("/static/products/bang_size.jpg")
 
-    # BẢO VỆ 2 LỚP: Nếu đã biết số đo / size mà bot lỡ hỏi lại chiều cao cân nặng
-    if (known_weight or known_size) and reply_text:
-        ask_hw_pattern = re.compile(
-            r'(?i)\s*(?:anh|chị|bạn)?\s*(?:cho em xin|xin|nhắn em|báo em)\s*(?:chiều cao|cân nặng|chiều cao và cân nặng|chiều cao cân nặng|số đo)[^!.\n]*[!.]?(\s*💪)?'
+    follow_up_text = ""
+
+    # TÁCH TIN NHẮN BÁO GIÁ COMBO:
+    # Nếu tin nhắn là báo giá combo (đồng giá cả áo và quần, ưu đãi combo):
+    # 1. reply_text = tin nhắn báo giá
+    # 2. suggested_images = 2 ảnh mẫu mới
+    # 3. follow_up_text = "Anh đã chọn được mẫu nào chưa ạ? 💪"
+    is_combo_price_quote = (
+        ("đồng giá cả áo và quần" in reply_text) or 
+        ("1 món: 180k" in reply_text and "2 món: 300k" in reply_text)
+    )
+    if is_combo_price_quote:
+        reply_text = (
+            "Dạ bên em đồng giá cả áo và quần, ưu đãi theo combo nha anh:\n"
+            "1 món: 180k (ship 30k)\n"
+            "2 món: 300k freeship\n"
+            "3 món: 400k freeship\n"
+            "Từ món thứ 4 trở đi chỉ 130k/món thôi ạ! 🔥"
         )
-        if ask_hw_pattern.search(reply_text):
-            reply_text = ask_hw_pattern.sub('', reply_text).strip()
-            # Bổ sung câu hỏi tương tác phù hợp
+        if not suggested_images:
+            ad_models = customer_profile.get("ad_models") if customer_profile else None
+            if ad_models:
+                try:
+                    from app.tools.business_rules import tim_anh_san_pham
+                    for c in ad_models:
+                        res = tim_anh_san_pham(str(c))
+                        for img in res.get("image_urls", []):
+                            if img and img not in suggested_images:
+                                suggested_images.append(img)
+                        if len(suggested_images) >= 2:
+                            break
+                except Exception:
+                    pass
+
+            if not suggested_images:
+                try:
+                    from app.services.new_models_service import get_new_models
+                    new_m = get_new_models()
+                    for m in new_m[:2]:
+                        img = m.get("image_url")
+                        if img and img not in suggested_images:
+                            suggested_images.append(img)
+                except Exception:
+                    pass
+
+            if not suggested_images:
+                suggested_images = ["/static/products/mau_moi_1.png", "/static/products/mau_moi_2.png"]
+        suggested_images = suggested_images[:2]
+        follow_up_text = "Anh đã chọn được mẫu nào chưa ạ? 💪"
+
+    if not follow_up_text:
+        # BẢO VỆ 2 LỚP: Nếu đã biết số đo / size mà bot lỡ hỏi lại chiều cao cân nặng
+        if (known_weight or known_size) and reply_text:
+            ask_hw_pattern = re.compile(
+                r'(?i)\s*(?:anh|chị|bạn)?\s*(?:cho em xin|xin|nhắn em|báo em)\s*(?:chiều cao|cân nặng|chiều cao và cân nặng|chiều cao cân nặng|số đo)[^!.\n]*[!.]?(\s*💪)?'
+            )
+            if ask_hw_pattern.search(reply_text):
+                reply_text = ask_hw_pattern.sub('', reply_text).strip()
+                # Bổ sung câu hỏi tương tác phù hợp
+                has_order_verb = any(w in lower_user for w in ["lấy", "lay", "đặt", "dat", "mua", "chốt", "chot"])
+                has_digits = bool(re.search(r'\d+', user_message))
+                if has_order_verb and has_digits:
+                    reply_text += "\nAnh cho em xin địa chỉ và số điện thoại để em lên đơn gửi ship COD tận nhà cho mình nhé! 📦"
+                else:
+                    sz_txt = f"size {known_size} " if known_size else ""
+                    reply_text += f"\nAnh xem qua ưng mẫu nào nhắn em để em giữ {sz_txt}cho mình nhé! 💪"
+
+        # BẢO VỆ 3 LỚP: Đảm bảo câu trả lời luôn kết thúc bằng một câu hỏi tương tác (Call to Action)
+        # Tránh trường hợp bot trả lời câu hỏi cụt ngủn rồi im lặng
+        if reply_text and not any(q in reply_text for q in ["?", "không", "nha", "nhé", "nào", "chưa", "nhỉ", "📦", "💪"]):
             has_order_verb = any(w in lower_user for w in ["lấy", "lay", "đặt", "dat", "mua", "chốt", "chot"])
             has_digits = bool(re.search(r'\d+', user_message))
-            if has_order_verb and has_digits:
-                reply_text += "\nAnh cho em xin địa chỉ và số điện thoại để em lên đơn gửi ship COD tận nhà cho mình nhé! 📦"
-            else:
+            if not (known_weight or known_size):
+                reply_text += "\nAnh cho em xin chiều cao và cân nặng để em chọn size chuẩn cho mình nhé! 💪"
+            elif not (has_order_verb and has_digits):
                 sz_txt = f"size {known_size} " if known_size else ""
-                reply_text += f"\nAnh xem qua ưng mẫu nào nhắn em để em giữ {sz_txt}cho mình nhé! 💪"
+                reply_text += f"\nAnh xem qua ưng mẫu nào nhắn em để em giữ {sz_txt}cho mình nha! 💪"
+            else:
+                reply_text += "\nAnh cho em xin địa chỉ và số điện thoại để em lên đơn gửi ship cho mình nha! 📦"
 
-    # BẢO VỆ 3 LỚP: Đảm bảo câu trả lời luôn kết thúc bằng một câu hỏi tương tác (Call to Action)
-    # Tránh trường hợp bot trả lời câu hỏi cụt ngủn rồi im lặng
-    if reply_text and not any(q in reply_text for q in ["?", "không", "nha", "nhé", "nào", "chưa", "nhỉ", "📦", "💪"]):
-        has_order_verb = any(w in lower_user for w in ["lấy", "lay", "đặt", "dat", "mua", "chốt", "chot"])
-        has_digits = bool(re.search(r'\d+', user_message))
-        if not (known_weight or known_size):
-            reply_text += "\nAnh cho em xin chiều cao và cân nặng để em chọn size chuẩn cho mình nhé! 💪"
-        elif not (has_order_verb and has_digits):
-            sz_txt = f"size {known_size} " if known_size else ""
-            reply_text += f"\nAnh xem qua ưng mẫu nào nhắn em để em giữ {sz_txt}cho mình nha! 💪"
-        else:
-            reply_text += "\nAnh cho em xin địa chỉ và số điện thoại để em lên đơn gửi ship cho mình nha! 📦"
+    # Cập nhật lịch sử assistant message nếu có follow_up_text
+    if follow_up_text and full_messages and full_messages[-1].get("role") == "assistant":
+        full_messages[-1]["content"] = f"{reply_text}\n\n{follow_up_text}"
 
     suggested_image = suggested_images[0] if suggested_images else None
 
@@ -569,5 +624,6 @@ async def generate_response(
         "tool_calls_made": tool_calls_made,
         "suggested_image": suggested_image,
         "suggested_images": suggested_images,
+        "follow_up_text": follow_up_text,
         "updated_messages": full_messages
     }

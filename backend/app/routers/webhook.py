@@ -366,6 +366,7 @@ async def handle_webhook(request: Request):
                             suggested_images = res.get("suggested_images") or []
                             if not suggested_images and res.get("suggested_image"):
                                 suggested_images = [res.get("suggested_image")]
+                            follow_up_text = res.get("follow_up_text", "")
 
                             # Cập nhật lịch sử — chỉ lưu user + assistant có text content
                             # Bỏ: role=system, role=tool, assistant chỉ có tool_calls (không có text)
@@ -388,7 +389,7 @@ async def handle_webhook(request: Request):
                                 logger.info(f"[Handover] Admin intervened during generation for {sender_id}. Suppressing bot reply!")
                                 continue
 
-                            # Gửi câu trả lời văn bản
+                            # Gửi câu trả lời văn bản đầu tiên
                             if reply_text:
                                 # Nếu là câu thông báo bận/lỗi hệ thống, áp dụng rate-limit để không spam khách
                                 if "Hiện tại hệ thống đang bận" in reply_text:
@@ -409,6 +410,13 @@ async def handle_webhook(request: Request):
                                     logger.info(f"[Handover] Admin intervened. Suppressing image send for {sender_id}!")
                                     break
                                 await send_image_message(sender_id, img, notification_type="SILENT_PUSH")
+
+                            # Gửi tin nhắn câu hỏi tiếp theo sau ảnh (nếu có, ví dụ: sau khi gửi ảnh mẫu báo giá)
+                            if follow_up_text:
+                                paused_during_followup, _ = is_bot_paused(sender_id)
+                                if not paused_during_followup:
+                                    await asyncio.sleep(0.5)
+                                    await send_text_message(sender_id, follow_up_text)
 
                         except Exception as e:
                             logger.error(f"Error handling message for {sender_id}: {e}", exc_info=True)

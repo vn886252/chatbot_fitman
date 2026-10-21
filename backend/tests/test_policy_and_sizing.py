@@ -44,3 +44,34 @@ def test_system_prompt_initial_two_models_rule():
     assert "QUYẾT ĐỊNH 4" in prompt
     assert "CHỈ GỬI ĐÚNG 2 ẢNH MÃ MỚI THÔI" in prompt
     assert "còn mẫu nào nữa shop" in prompt or "thêm mẫu" in prompt
+
+@pytest.mark.asyncio
+async def test_price_quote_split():
+    from app.services.llm_service import generate_response
+    from unittest.mock import patch, MagicMock
+    
+    mock_llm_response = {
+        "choices": [{
+            "message": {
+                "role": "assistant",
+                "content": (
+                    "Dạ bên em đồng giá cả áo và quần, ưu đãi theo combo nha anh:\n"
+                    "1 món: 180k (ship 30k)\n"
+                    "2 món: 300k freeship\n"
+                    "3 món: 400k freeship\n"
+                    "Từ món thứ 4 trở đi chỉ 130k/món thôi ạ! 🔥\n\n"
+                    "Anh có muốn chọn mẫu nào không ạ?"
+                )
+            }
+        }]
+    }
+    with patch("httpx.AsyncClient.post") as mock_post:
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = mock_llm_response
+        mock_post.return_value = mock_resp
+        res = await generate_response([], "áo này giá sao shop")
+        assert "đồng giá cả áo và quần" in res["reply_text"]
+        assert "Anh có muốn chọn mẫu nào không ạ?" not in res["reply_text"]
+        assert len(res["suggested_images"]) == 2
+        assert res["follow_up_text"] == "Anh đã chọn được mẫu nào chưa ạ? 💪"

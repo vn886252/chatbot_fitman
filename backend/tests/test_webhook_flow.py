@@ -1,7 +1,7 @@
 import pytest
 import sys
 import os
-from unittest.mock import patch, AsyncMock
+from unittest.mock import patch, AsyncMock, call
 from fastapi.testclient import TestClient
 
 # Add backend directory to sys.path
@@ -300,5 +300,51 @@ class TestWebhookAndRoutes:
             assert order["tong_tien"] == 299000
             assert order["phuong_thuc_thanh_toan"] == "TECHCOMBANK"
             assert any("XL" in m for m in order["danh_sach_mon"])
+
+    def test_webhook_follow_up_text_sequence(self):
+        payload = {
+            "object": "page",
+            "entry": [
+                {
+                    "id": "10001",
+                    "time": 1710000000,
+                    "messaging": [
+                        {
+                            "sender": {"id": "user_psid_price_test"},
+                            "recipient": {"id": "page_id_67890"},
+                            "timestamp": 1710000000,
+                            "message": {
+                                "mid": "mid_price_01",
+                                "text": "giá sao shop"
+                            }
+                        }
+                    ]
+                }
+            ]
+        }
+
+        with patch("app.routers.webhook.generate_response", new_callable=AsyncMock) as mock_llm, \
+             patch("app.routers.webhook.send_text_message", new_callable=AsyncMock) as mock_send_text, \
+             patch("app.routers.webhook.send_image_message", new_callable=AsyncMock) as mock_send_img:
+
+            mock_llm.return_value = {
+                "reply_text": "Dạ bên em đồng giá cả áo và quần, ưu đãi theo combo nha anh:\n1 món: 180k (ship 30k)\n2 món: 300k freeship\n3 món: 400k freeship\nTừ món thứ 4 trở đi chỉ 130k/món thôi ạ! 🔥",
+                "tool_calls_made": [],
+                "suggested_images": ["/static/products/mau_moi_1.png", "/static/products/mau_moi_2.png"],
+                "follow_up_text": "Anh đã chọn được mẫu nào chưa ạ? 💪",
+                "updated_messages": []
+            }
+
+            response = client.post("/webhook", json=payload)
+            assert response.status_code == 200
+            assert response.json() == {"status": "EVENT_RECEIVED"}
+
+            # Kiểm tra thứ tự: Text 1 (báo giá) -> 2 Ảnh -> Text 2 (câu hỏi sau ảnh)
+            assert mock_send_text.await_count == 2
+            mock_send_text.assert_has_awaits([
+                call("user_psid_price_test", "Dạ bên em đồng giá cả áo và quần, ưu đãi theo combo nha anh:\n1 món: 180k (ship 30k)\n2 món: 300k freeship\n3 món: 400k freeship\nTừ món thứ 4 trở đi chỉ 130k/món thôi ạ! 🔥"),
+                call("user_psid_price_test", "Anh đã chọn được mẫu nào chưa ạ? 💪")
+            ])
+            assert mock_send_img.await_count == 2
 
 

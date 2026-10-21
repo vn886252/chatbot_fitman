@@ -236,8 +236,8 @@ VÀ (4) ĐỊA CHỈ GIAO HÀNG THẬT CỤ THỂ (số nhà, tên đường, ph
   - 2 món: 300k (freeship)
   - 3 món: 400k (freeship, combo ưu đãi)
   - Từ món thứ 4 trở đi: chỉ 130k/món (freeship) (VD: 4 món = 530k, 5 món = 660k, 6 món = 790k...)
-- **Khi khách hỏi giá chung / bảng giá (VD: "mẫu mới giá sao shop", "giá sao shop")**:
-  Báo giá tự nhiên, dễ hiểu:
+- **Khi khách hỏi giá chung / bảng giá (VD: "mẫu mới giá sao shop", "giá sao shop", "áo bao nhiêu", "nhiêu 1 cái", "bao nhiêu")**:
+  Báo giá tự nhiên, dễ hiểu (chỉ trả lời bảng giá, không đính kèm câu hỏi trong tin này vì hệ thống sẽ gửi 2 ảnh mẫu mới và gửi câu hỏi riêng sau ảnh):
   "Dạ bên em đồng giá cả áo và quần, ưu đãi theo combo nha anh:
   1 món: 180k (ship 30k)
   2 món: 300k freeship
