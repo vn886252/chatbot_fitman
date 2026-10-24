@@ -24,18 +24,62 @@ def _resolve_image_url(image_path: str) -> str:
 
 
 async def get_customer_name(recipient_id: str) -> str:
-    """Lấy tên thật của khách hàng từ Facebook Graph API."""
-    if not settings.FB_PAGE_ACCESS_TOKEN or not recipient_id:
+    """
+    Lấy tên thật của khách hàng:
+    1. Kiểm tra trong bộ nhớ hồ sơ khách hàng (customer_profile).
+    2. Gọi Facebook Graph API (fields=first_name,last_name,profile_pic).
+    3. Fallback tìm trong danh sách người tham gia hội thoại gần nhất (/me/conversations).
+    """
+    if not recipient_id:
         return "Khách hàng"
-    url = f"https://graph.facebook.com/v19.0/{recipient_id}?fields=first_name,last_name,name&access_token={settings.FB_PAGE_ACCESS_TOKEN}"
+
+    # 1. Kiểm tra trong customer_profile
     try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
+        from app.services.customer_service import get_customer_profile, save_customer_profile
+        prof = get_customer_profile(recipient_id)
+        if prof and prof.get("ten_khach_hang") and prof["ten_khach_hang"] != "Khách hàng":
+            return prof["ten_khach_hang"]
+    except Exception:
+        pass
+
+    if not settings.FB_PAGE_ACCESS_TOKEN:
+        return "Khách hàng"
+
+    # 2. Thử truy vấn Graph API User Profile theo chuẩn Messenger
+    url = f"https://graph.facebook.com/v19.0/{recipient_id}?fields=first_name,last_name,profile_pic&access_token={settings.FB_PAGE_ACCESS_TOKEN}"
+    try:
+        async with httpx.AsyncClient(timeout=8.0) as client:
             res = await client.get(url)
             if res.status_code == 200:
                 data = res.json()
-                return data.get("name") or "Khách hàng"
+                first = str(data.get("first_name") or "").strip()
+                last = str(data.get("last_name") or "").strip()
+                full_name = f"{last} {first}".strip() if (last or first) else str(data.get("name") or "").strip()
+                if full_name and full_name != "Khách hàng":
+                    save_customer_profile(recipient_id, ten_khach_hang=full_name)
+                    return full_name
+            else:
+                logger.info(f"[Facebook Profile] Could not fetch profile for {recipient_id}: status={res.status_code}")
     except Exception as e:
         logger.warning(f"Could not fetch Facebook profile for {recipient_id}: {e}")
+
+    # 3. Fallback: tìm qua hội thoại gần nhất /me/conversations
+    try:
+        conv_url = f"https://graph.facebook.com/v19.0/me/conversations?fields=participants&access_token={settings.FB_PAGE_ACCESS_TOKEN}&limit=15"
+        async with httpx.AsyncClient(timeout=8.0) as client:
+            c_res = await client.get(conv_url)
+            if c_res.status_code == 200:
+                c_data = c_res.json()
+                for thread in c_data.get("data", []):
+                    for p in thread.get("participants", {}).get("data", []):
+                        if str(p.get("id")) == str(recipient_id) and p.get("name"):
+                            found_name = str(p["name"]).strip()
+                            if found_name and found_name != "Khách hàng":
+                                save_customer_profile(recipient_id, ten_khach_hang=found_name)
+                                return found_name
+    except Exception:
+        pass
+
     return "Khách hàng"
 
 

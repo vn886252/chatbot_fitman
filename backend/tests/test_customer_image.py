@@ -177,3 +177,53 @@ async def test_send_handover_alert_image_telegram():
         mock_photo.assert_called_once()
         mock_msg.assert_called_once()
         assert "Trần Văn B" in mock_msg.call_args[0][0]
+
+
+@pytest.mark.asyncio
+async def test_handover_alert_includes_fanpage_chat_link(tmp_path):
+    """Kiểm tra thông báo handover có nút mở chat Fanpage và thông tin định danh khách hàng."""
+    from app.services.telegram_service import send_handover_alert
+    from app.services.customer_service import save_customer_profile
+
+    customers_file = tmp_path / "test_link_customers.json"
+    with patch("app.services.customer_service.CUSTOMERS_FILE", customers_file), \
+         patch("app.services.telegram_service.send_telegram_message", new_callable=AsyncMock) as mock_send:
+
+        mock_send.return_value = True
+
+        save_customer_profile(
+            "fb_psid_999",
+            ten_khach_hang="Nguyễn Văn Hùng",
+            so_dien_thoai="0911223344",
+            chieu_cao="175",
+            can_nang="75",
+            size_ao="L",
+            ad_campaign_name="Áo Basketball Fitman",
+            ad_post_id="1523979186418810"
+        )
+
+        success = await send_handover_alert(
+            customer_id="fb_psid_999",
+            customer_name="Khách hàng",
+            event_type="customer_requested",
+            user_text="Em muốn hỏi thêm về size"
+        )
+        assert success is True
+        mock_send.assert_called_once()
+        msg_text = mock_send.call_args[0][0]
+        reply_markup = mock_send.call_args[1].get("reply_markup") or {}
+
+        # Kiểm tra nội dung tin nhắn được bổ sung đầy đủ thông tin định danh
+        assert "Nguyễn Văn Hùng" in msg_text
+        assert "0911223344" in msg_text
+        assert "175cm, 75kg, Size L" in msg_text
+        assert "Áo Basketball Fitman" in msg_text
+        assert "1523979186418810" in msg_text
+
+        # Kiểm tra nút bấm mở chat Fanpage
+        inline_kb = reply_markup.get("inline_keyboard", [])
+        assert len(inline_kb) >= 1
+        first_btn = inline_kb[0][0]
+        assert first_btn["text"] == "💬 Mở chat trên Fanpage"
+        assert "business.facebook.com/latest/inbox/messenger?selected_item_id=fb_psid_999" in first_btn["url"]
+

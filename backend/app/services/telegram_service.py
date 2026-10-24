@@ -174,7 +174,16 @@ async def send_new_order_notification(order: Dict[str, Any]) -> bool:
 
 {footer}"""
 
-    return await send_telegram_message(msg)
+    order_sid = str(order.get("sender_id") or "").strip()
+    order_keyboard = {
+        "inline_keyboard": [
+            [
+                {"text": "💬 Mở chat trên Fanpage", "url": f"https://business.facebook.com/latest/inbox/messenger?selected_item_id={order_sid}"}
+            ]
+        ]
+    } if order_sid else None
+
+    return await send_telegram_message(msg, reply_markup=order_keyboard)
 
 
 async def send_daily_revenue_report(target_date: Optional[str] = None) -> bool:
@@ -316,21 +325,49 @@ async def send_handover_alert(
 
     timeout_h = getattr(settings, "HANDOVER_TIMEOUT_HOURS", 2)
 
+    # Đọc thêm thông tin định danh từ hồ sơ khách hàng (nếu có)
+    extra_details = []
+    try:
+        from app.services.customer_service import get_customer_profile
+        prof = get_customer_profile(customer_id) or {}
+        if (not customer_name or customer_name == "Khách hàng") and prof.get("ten_khach_hang"):
+            c_name = html.escape(str(prof["ten_khach_hang"]))
+        if prof.get("so_dien_thoai"):
+            extra_details.append(f"📞 <b>SĐT:</b> <code>{html.escape(str(prof['so_dien_thoai']))}</code>")
+        body_info = []
+        if prof.get("chieu_cao"):
+            body_info.append(f"{prof['chieu_cao']}cm")
+        if prof.get("can_nang"):
+            body_info.append(f"{prof['can_nang']}kg")
+        if prof.get("size_ao"):
+            body_info.append(f"Size {prof['size_ao']}")
+        if body_info:
+            extra_details.append(f"📏 <b>Số đo / Size:</b> {', '.join(body_info)}")
+        if prof.get("ad_campaign_name") or prof.get("ad_post_id"):
+            ad_camp = prof.get("ad_campaign_name") or "Quảng cáo Facebook"
+            ad_post = prof.get("ad_post_id") or ""
+            p_str = f" (Post: <code>{ad_post}</code>)" if ad_post else ""
+            extra_details.append(f"🎯 <b>Nguồn Ads:</b> {html.escape(ad_camp)}{p_str}")
+    except Exception:
+        pass
+
+    extra_info_block = ("\n" + "\n".join(extra_details)) if extra_details else ""
+
     if event_type == "customer_requested":
         msg = f"""🔔 <b>YÊU CẦU GẶP NGƯỜI THẬT!</b>
 👤 <b>Khách hàng:</b> {c_name}
 🆔 <b>ID:</b> <code>{c_id}</code>
-💬 <b>Tin nhắn của khách:</b> <i>"{u_text}"</i>
+💬 <b>Tin nhắn của khách:</b> <i>"{u_text}"</i>{extra_info_block}
 
-⚠️ <i>Bot đã tạm dừng tự động với khách này trong {timeout_h} giờ. Bạn vui lòng vào Page Inbox để tư vấn nhé!</i>"""
+⚠️ <i>Bot đã tạm dừng tự động với khách này trong {timeout_h} giờ. Bạn bấm <b>💬 Mở chat trên Fanpage</b> bên dưới để vào tư vấn nhé!</i>"""
 
     elif event_type == "human_chatting":
         msg = f"""👤 <b>NHÂN VIÊN ĐANG CHAT VỚI KHÁCH</b>
 👤 <b>Khách hàng:</b> {c_name}
 🆔 <b>ID:</b> <code>{c_id}</code>
-💬 <b>Nội dung vừa gửi:</b> <i>"{u_text}"</i>
+💬 <b>Nội dung vừa gửi:</b> <i>"{u_text}"</i>{extra_info_block}
 
-⏸️ <i>Bot đã tạm dừng tự động với khách này. Sau {timeout_h} giờ không có tin nhắn người thật, bot sẽ tự động bật lại.</i>"""
+⏸️ <i>Bot đã tạm dừng tự động với khách này trong {timeout_h} giờ.</i>"""
 
     elif event_type == "auto_resumed":
         msg = f"""▶️ <b>BOT ĐÃ TỰ ĐỘNG BẬT LẠI VỚI KHÁCH</b>
@@ -343,15 +380,18 @@ async def send_handover_alert(
         u_info = f'\n💬 <b>Lời nhắn của khách:</b> <i>"{u_text}"</i>' if u_text and u_text not in ["[Đã gửi ảnh]", "[Đã gửi ảnh mẫu]"] else ""
         msg = f"""📸 <b>KHÁCH HÀNG VỪA GỬI ẢNH MẪU!</b>
 👤 <b>Khách hàng:</b> {c_name}
-🆔 <b>ID:</b> <code>{c_id}</code>{u_info}
+🆔 <b>ID:</b> <code>{c_id}</code>{u_info}{extra_info_block}
 
-💡 <i>Khách vừa gửi ảnh mẫu qua Messenger. Bạn vào kiểm tra ảnh để tư vấn hoặc chốt mẫu cho khách nhé!</i>"""
+💡 <i>Khách vừa gửi ảnh mẫu qua Messenger. Bấm <b>💬 Mở chat trên Fanpage</b> bên dưới để mở ngay cuộc trò chuyện này trên Meta Business Suite nhé!</i>"""
 
     else:
-        msg = f"🔔 <b>THÔNG BÁO TỪ KHÁCH HÀNG</b>\n👤 <b>{c_name}</b> (<code>{c_id}</code>): {u_text}"
+        msg = f"🔔 <b>THÔNG BÁO TỪ KHÁCH HÀNG</b>\n👤 <b>{c_name}</b> (<code>{c_id}</code>): {u_text}{extra_info_block}"
 
     handover_keyboard = {
         "inline_keyboard": [
+            [
+                {"text": "💬 Mở chat trên Fanpage", "url": f"https://business.facebook.com/latest/inbox/messenger?selected_item_id={customer_id}"}
+            ],
             [
                 {"text": "⏸️ Tắt bot khách này", "callback_data": f"pause_user_{customer_id}"},
                 {"text": "▶️ Bật lại bot", "callback_data": f"resume_user_{customer_id}"}
@@ -405,15 +445,27 @@ async def send_ad_referral_alert(
 
 💡 <i>Bot đã tự động gửi ảnh mẫu quảng cáo và mời khách chọn size/chốt đơn!</i>"""
 
+    ad_keyboard = {
+        "inline_keyboard": [
+            [
+                {"text": "💬 Mở chat trên Fanpage", "url": f"https://business.facebook.com/latest/inbox/messenger?selected_item_id={customer_id}"}
+            ],
+            [
+                {"text": "⏸️ Tắt bot khách này", "callback_data": f"pause_user_{customer_id}"},
+                {"text": "📦 Tạo đơn", "callback_data": f"create_order_{customer_id}"}
+            ]
+        ]
+    } if customer_id else None
+
     if photo_url and str(photo_url).startswith("http"):
         try:
-            photo_sent = await send_telegram_photo(photo_url, caption=msg)
+            photo_sent = await send_telegram_photo(photo_url, caption=msg, reply_markup=ad_keyboard)
             if photo_sent:
                 return True
         except Exception:
             pass
 
-    return await send_telegram_message(msg)
+    return await send_telegram_message(msg, reply_markup=ad_keyboard)
 
 
 def format_period_report(summary: dict) -> str:
