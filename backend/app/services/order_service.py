@@ -44,6 +44,8 @@ def save_order(order_data: dict) -> dict:
 
     now = _get_ict_now()
     date_str = now.strftime("%Y-%m-%d")
+    force_new = bool(order_data.get("force_new", False))
+    sender_id = str(order_data.get("sender_id") or "").strip()
 
     # Làm sạch tên khách hàng: chống bịa tên mẫu
     raw_name = str(order_data.get("ten_khach_hang") or "").strip()
@@ -62,8 +64,10 @@ def save_order(order_data: dict) -> dict:
         "123 lê lợi", "123 đường lê lợi", "123 abc", "123 đường abc",
         "địa chỉ bạn đã cung cấp", "địa chỉ khách cung cấp", "địa chỉ của anh", ""
     ]
-    if raw_addr.lower() in hallucinated_addrs or not raw_addr:
+    if not force_new and (raw_addr.lower() in hallucinated_addrs or not raw_addr):
         clean_addr = "Chưa có địa chỉ cụ thể"
+    elif not raw_addr:
+        clean_addr = "Địa chỉ nhận hàng (cập nhật sau)" if force_new else "Chưa có địa chỉ cụ thể"
     else:
         clean_addr = raw_addr
 
@@ -72,8 +76,6 @@ def save_order(order_data: dict) -> dict:
 
     # Kiểm tra xem có đơn hàng trùng khớp trong ngày không (trừ khi yêu cầu force_new)
     existing_order = None
-    force_new = bool(order_data.get("force_new", False))
-    sender_id = str(order_data.get("sender_id") or "").strip()
     if not force_new:
         for o in orders:
             if o.get("date") != date_str:
@@ -158,7 +160,7 @@ def save_order(order_data: dict) -> dict:
     order_id = f"ORD-{now.strftime('%y%m%d')}-{order_number_today:03d}"
 
     # Kiểm tra tính hợp lệ của đơn hàng trước khi tạo
-    if tong_tien < 100000 or len(clean_phone) < 10 or clean_addr == "Chưa có địa chỉ cụ thể":
+    if tong_tien < 100000 or len(clean_phone) < 10 or (clean_addr == "Chưa có địa chỉ cụ thể" and not force_new):
         logger.warning(f"Từ chối lưu đơn hàng không hợp lệ: tiền={tong_tien}, SĐT={clean_phone}, địa chỉ={clean_addr}")
         return None
 

@@ -325,3 +325,65 @@ def test_telegram_test_endpoint_blocked_403():
         assert data.get("error_code") == 403
         assert "solution" in data
 
+
+@pytest.mark.asyncio
+async def test_manual_order_command(tmp_path):
+    """Kiểm tra admin gõ lệnh /don tạo đơn thủ công trên Telegram."""
+    from app.services.telegram_service import handle_manual_order_command
+    from app.services.customer_service import save_customer_profile
+    from app.services.order_service import get_daily_summary
+    from datetime import datetime
+
+    orders_file = tmp_path / "test_manual_orders.json"
+    customers_file = tmp_path / "test_manual_customers.json"
+    handover_file = tmp_path / "test_manual_handover.json"
+
+    with patch("app.services.order_service.ORDERS_FILE", orders_file), \
+         patch("app.services.customer_service.CUSTOMERS_FILE", customers_file), \
+         patch("app.services.telegram_service.send_telegram_message", new_callable=AsyncMock) as mock_send:
+
+        mock_send.return_value = True
+
+        # Giả lập khách hàng vào từ Ads có post_id
+        save_customer_profile(
+            "fb_user_manual_123",
+            so_dien_thoai="0901234567",
+            ad_post_id="1523979186418810",
+            ad_campaign_name="Áo Basketball Fitman"
+        )
+
+        cmd = "/don 0901234567 300k 2 áo size L 123 Lê Lợi, P. Bến Nghé, Q1, HCM"
+        success = await handle_manual_order_command(cmd, "12345")
+        assert success is True
+
+        mock_send.assert_called_once()
+        sent_text = mock_send.call_args[0][0]
+        assert "ĐÃ LƯU ĐƠN HÀNG THÀNH CÔNG" in sent_text
+        assert "0901234567" in sent_text
+        assert "300.000đ" in sent_text
+        assert "1523979186418810" in sent_text
+
+        # Xác nhận đơn được lưu và tính doanh thu
+        today_str = datetime.now().strftime("%Y-%m-%d")
+        summary = get_daily_summary(today_str)
+        assert summary["total_orders"] == 1
+        assert summary["total_revenue"] == 300000
+
+
+@pytest.mark.asyncio
+async def test_manual_order_missing_info():
+    """Kiểm tra admin gõ /don thiếu sđt hoặc thiếu tiền -> bot báo lỗi hướng dẫn."""
+    from app.services.telegram_service import handle_manual_order_command
+
+    with patch("app.services.telegram_service.send_telegram_message", new_callable=AsyncMock) as mock_send:
+        mock_send.return_value = True
+
+        # Thiếu sđt và tiền
+        await handle_manual_order_command("/don", "12345")
+        assert "HƯỚNG DẪN TẠO ĐƠN HÀNG THỦ CÔNG" in mock_send.call_args[0][0]
+
+        # Thiếu tiền
+        await handle_manual_order_command("/don 0901234567 áo size L", "12345")
+        assert "THIẾU THÔNG TIN ĐƠN HÀNG" in mock_send.call_args[0][0]
+
+

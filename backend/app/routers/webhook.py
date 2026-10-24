@@ -259,6 +259,8 @@ async def handle_webhook(request: Request):
                                     _conversation_history[sender_id].append({"role": "assistant", "content": greeting})
                                 for img in images:
                                     await send_image_message(sender_id, img, notification_type="SILENT_PUSH")
+                                if images:
+                                    save_customer_profile(sender_id, has_sent_product_photos=True)
                             continue
 
                 # -------------------------------------------------------------
@@ -410,6 +412,10 @@ async def handle_webhook(request: Request):
                                     logger.info(f"[Handover] Admin intervened. Suppressing image send for {sender_id}!")
                                     break
                                 await send_image_message(sender_id, img, notification_type="SILENT_PUSH")
+
+                            if any(not str(img).endswith("bang_size.jpg") for img in suggested_images):
+                                from app.services.customer_service import save_customer_profile
+                                save_customer_profile(sender_id, has_sent_product_photos=True)
 
                             # Gửi tin nhắn câu hỏi tiếp theo sau ảnh (nếu có, ví dụ: sau khi gửi ảnh mẫu báo giá)
                             if follow_up_text:

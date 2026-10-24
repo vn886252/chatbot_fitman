@@ -13,8 +13,8 @@ REPLY_KEYBOARD = {
     "keyboard": [
         [{"text": "📊 Doanh thu Hôm nay"}, {"text": "📅 Doanh thu 7 Ngày"}],
         [{"text": "🗓️ Doanh thu Tháng này"}, {"text": "👕 Quản lý Mẫu mới"}],
-        [{"text": "⏸️ Tạm dừng Bot"}, {"text": "▶️ Bật lại Bot"}],
-        [{"text": "❓ Hướng dẫn"}]
+        [{"text": "📦 Tạo đơn thủ công"}, {"text": "❓ Hướng dẫn"}],
+        [{"text": "⏸️ Tạm dừng Bot"}, {"text": "▶️ Bật lại Bot"}]
     ],
     "resize_keyboard": True,
     "persistent": True
@@ -355,6 +355,9 @@ async def send_handover_alert(
             [
                 {"text": "⏸️ Tắt bot khách này", "callback_data": f"pause_user_{customer_id}"},
                 {"text": "▶️ Bật lại bot", "callback_data": f"resume_user_{customer_id}"}
+            ],
+            [
+                {"text": "📦 Tạo đơn khách này", "callback_data": f"create_order_{customer_id}"}
             ]
         ]
     } if customer_id else None
@@ -586,6 +589,199 @@ async def send_model_management_info(chat_id: Optional[str] = None) -> bool:
     return await send_telegram_message(text, reply_markup=REPLY_KEYBOARD, chat_id=target_chat_id)
 
 
+async def handle_manual_order_command(text: str, user_chat_id: str) -> bool:
+    """
+    Xử lý lệnh tạo đơn thủ công từ chủ shop trên Telegram:
+    Cú pháp:
+      /don [SĐT] [Tiền] [Món] [Địa chỉ]
+      hoặc nhiều dòng:
+      /don
+      SĐT: 0901234567
+      Tiền: 300k
+      Món: 2 áo size L
+      Địa chỉ: 123 Lê Lợi, Q1
+    """
+    from app.services.order_service import save_order
+    from app.services.customer_service import _load_customers
+    from app.services.handover_service import _global_state
+
+    # Cắt bỏ tên lệnh ở đầu
+    clean_text = re.sub(
+        r'^(?:/don|/order|/chot|/taodon|tạo đơn thủ công|tao don thu cong|tạo đơn|tao don|chốt đơn|chot don)\b',
+        '',
+        text.strip(),
+        flags=re.IGNORECASE
+    ).strip()
+
+    if not clean_text:
+        help_text = (
+            "📦 <b>HƯỚNG DẪN TẠO ĐƠN HÀNG THỦ CÔNG:</b>\n\n"
+            "Khi bạn vào chat và chốt đơn cho khách trên Fanpage, chỉ cần gửi tin nhắn theo cú pháp:\n\n"
+            "<code>/don [SĐT] [Tiền] [Món hàng] [Địa chỉ]</code>\n\n"
+            "💡 <b>Ví dụ 1 dòng nhanh:</b>\n"
+            "• <code>/don 0901234567 300k 2 áo size L 123 Lê Lợi, P. Bến Nghé, Q.1, HCM</code>\n"
+            "• <code>/don 0988776655 400k 3 áo mẫu 45 46 size XL KĐT Ciputra Tây Hồ Hà Nội</code>\n\n"
+            "Hoặc gửi dạng nhiều dòng:\n"
+            "<code>/don\n"
+            "SĐT: 0901234567\n"
+            "Tiền: 300k\n"
+            "Món: 2 áo mẫu 46 (size L)\n"
+            "Địa chỉ: 123 Lê Lợi, Q1, HCM</code>\n\n"
+            "🎯 <b>Hệ thống sẽ tự động:</b>\n"
+            "1. Lưu đơn vào hệ thống.\n"
+            "2. Dò tìm khách hàng trên Fanpage để <b>gắn đúng bài quảng cáo Facebook Ads</b> (tính ROAS chuẩn xác).\n"
+            "3. Cộng doanh thu vào báo cáo hôm nay ngay lập tức! 💪"
+        )
+        return await send_telegram_message(help_text, chat_id=user_chat_id)
+
+    # 1. Trích xuất SĐT (10-11 số)
+    phone_match = re.search(r'\b(0\d{9,10})\b', clean_text)
+    phone = phone_match.group(1) if phone_match else ""
+
+    # 2. Trích xuất tiền
+    money = 0
+    k_match = re.search(r'\b(\d+)\s*[kK]\b', clean_text)
+    dot_match = re.search(r'\b(\d{1,3}(?:\.\d{3})+)\s*(?:đ|vnd|k)?\b', clean_text, re.IGNORECASE)
+    raw_num_match = re.search(r'\b(\d{5,7})\s*(?:đ|vnd)?\b', clean_text, re.IGNORECASE)
+
+    if k_match:
+        money = int(k_match.group(1)) * 1000
+    elif dot_match:
+        money = int(dot_match.group(1).replace(".", ""))
+    elif raw_num_match:
+        money = int(raw_num_match.group(1))
+
+    if not phone or money < 100000:
+        err_msg = (
+            "⚠️ <b>THIẾU THÔNG TIN ĐƠN HÀNG!</b>\n\n"
+            "Vui lòng cung cấp tối thiểu <b>Số điện thoại (10 số)</b> và <b>Số tiền (từ 100k)</b>.\n\n"
+            "💡 <i>Ví dụ:</i> <code>/don 0901234567 300k 2 áo size L 123 Lê Lợi, Q1</code>"
+        )
+        return await send_telegram_message(err_msg, chat_id=user_chat_id)
+
+    # 3. Phân tách Món và Địa chỉ
+    items = ""
+    address = ""
+    customer_name = "Khách hàng"
+
+    lines = clean_text.split("\n")
+    if len(lines) > 1:
+        for line in lines:
+            l_str = line.strip()
+            if re.match(r'^(?:tên|ten|khách|khach)\s*:', l_str, re.IGNORECASE):
+                customer_name = re.sub(r'^(?:tên|ten|khách|khach)\s*:\s*', '', l_str, flags=re.IGNORECASE).strip()
+            elif re.match(r'^(?:món|mon|sp|sản phẩm|san pham|hàng|hang)\s*:', l_str, re.IGNORECASE):
+                items = re.sub(r'^(?:món|mon|sp|sản phẩm|san pham|hàng|hang)\s*:\s*', '', l_str, flags=re.IGNORECASE).strip()
+            elif re.match(r'^(?:địa chỉ|dia chi|đc|dc|giao về|ship về)\s*:', l_str, re.IGNORECASE):
+                address = re.sub(r'^(?:địa chỉ|dia chi|đc|dc|giao về|ship về)\s*:\s*', '', l_str, flags=re.IGNORECASE).strip()
+
+    if not items or not address:
+        rem_text = clean_text
+        if phone:
+            rem_text = re.sub(re.escape(phone), ' ', rem_text, count=1)
+        if k_match:
+            rem_text = re.sub(r'\b\d+\s*[kK]\b', ' ', rem_text, count=1)
+        elif dot_match:
+            rem_text = re.sub(r'\b\d{1,3}(?:\.\d{3})+\s*(?:đ|vnd|k)?\b', ' ', rem_text, count=1, flags=re.IGNORECASE)
+        elif raw_num_match:
+            rem_text = re.sub(r'\b\d{5,7}\s*(?:đ|vnd)?\b', ' ', rem_text, count=1, flags=re.IGNORECASE)
+
+        rem_text = " ".join(rem_text.split()).strip()
+
+        addr_match = re.search(r'(?:địa chỉ|dia chi|đc|dc|ship về|giao về|về)?\s*(\b\d+[\w/]*\s+[^,]+(?:,.*)?)$', rem_text, re.IGNORECASE)
+        if addr_match:
+            if not address:
+                address = addr_match.group(1).strip()
+            if not items:
+                items = rem_text[:addr_match.start()].strip()
+        else:
+            if not items:
+                items = rem_text
+            if not address:
+                address = "Địa chỉ nhận hàng (cập nhật sau)"
+
+    if not items:
+        items = "Quần áo thể thao Fitman"
+    if not address:
+        address = "Địa chỉ nhận hàng (cập nhật sau)"
+
+    # 4. Tìm khách hàng tương ứng để gắn đúng nguồn Facebook Ads
+    customers = _load_customers()
+    sender_id = ""
+    ad_source = None
+    matching_profile = None
+
+    for sid, prof in customers.items():
+        p_clean = re.sub(r'\D', '', str(prof.get("so_dien_thoai") or "")).strip()
+        if p_clean and p_clean == phone:
+            sender_id = sid
+            matching_profile = prof
+            break
+
+    if not sender_id:
+        last_cid = str(_global_state.get("last_customer_id") or "").strip()
+        if last_cid and last_cid in customers:
+            sender_id = last_cid
+            matching_profile = customers[last_cid]
+
+    if matching_profile:
+        if customer_name == "Khách hàng" and matching_profile.get("ten_khach_hang"):
+            customer_name = matching_profile["ten_khach_hang"]
+        if matching_profile.get("ad_campaign_name") or matching_profile.get("ad_id") or matching_profile.get("post_id"):
+            ad_source = {
+                "campaign": matching_profile.get("ad_campaign_name") or "Quảng cáo Facebook",
+                "post_id": str(matching_profile.get("ad_post_id") or matching_profile.get("post_id") or ""),
+                "ad_id": matching_profile.get("ad_id", ""),
+                "ad_ref": matching_profile.get("ad_ref", "")
+            }
+
+    # 5. Lưu đơn hàng
+    danh_sach_mon = [items] if isinstance(items, str) else items
+    so_luong = 1
+    qty_m = re.search(r'\b(\d+)\s*(?:áo|quần|cái|món|bộ)', items, re.IGNORECASE)
+    if qty_m:
+        so_luong = int(qty_m.group(1))
+
+    order_payload = {
+        "ten_khach_hang": customer_name,
+        "so_dien_thoai": phone,
+        "dia_chi": address,
+        "so_luong": so_luong,
+        "tong_tien": money,
+        "danh_sach_mon": danh_sach_mon,
+        "sender_id": sender_id,
+        "ghi_chu": "[Chủ shop lên đơn thủ công qua Telegram]",
+        "force_new": True
+    }
+    if ad_source:
+        order_payload["ad_source"] = ad_source
+
+    saved = save_order(order_payload)
+    if not saved:
+        return await send_telegram_message("❌ Lưu đơn hàng thất bại. Vui lòng kiểm tra lại thông tin!", chat_id=user_chat_id)
+
+    # 6. Gửi tin nhắn xác nhận thành công
+    money_fmt = f"{money:,}".replace(",", ".")
+    ad_line = ""
+    if ad_source:
+        camp_name = ad_source.get("campaign", "Quảng cáo Facebook")
+        p_id = ad_source.get("post_id", "")
+        p_str = f" (Bài viết: <code>{p_id}</code>)" if p_id else ""
+        ad_line = f"\n🎯 <b>Nguồn Ads:</b> {html.escape(camp_name)}{p_str}"
+
+    resp_msg = f"""✅ <b>ĐÃ LƯU ĐƠN HÀNG THÀNH CÔNG!</b>
+
+🆔 <b>Mã đơn:</b> <code>{saved['id']}</code> (Đơn #{saved.get('order_number_today', 1)} hôm nay)
+👤 <b>Khách hàng:</b> {html.escape(customer_name)}
+📞 <b>SĐT:</b> <code>{phone}</code>
+📍 <b>Địa chỉ:</b> {html.escape(address)}
+👕 <b>Sản phẩm:</b> {html.escape(items)}
+💰 <b>Tổng tiền:</b> <b>{money_fmt}đ</b>{ad_line}
+
+📊 <i>Doanh thu hôm nay đã được cập nhật thành công! 💪</i>"""
+    return await send_telegram_message(resp_msg, chat_id=user_chat_id)
+
+
 async def handle_telegram_update(update: dict) -> bool:
     """
     Xử lý update từ Telegram: tin nhắn văn bản, lệnh gõ hoặc sự kiện click nút bấm (callback_query).
@@ -612,6 +808,18 @@ async def handle_telegram_update(update: dict) -> bool:
             return await send_period_report(user_chat_id, "month")
         elif data == "report_refresh":
             return await send_period_report(user_chat_id, "today")
+        elif data.startswith("create_order_"):
+            target_id = data.replace("create_order_", "")
+            from app.services.handover_service import record_last_customer
+            record_last_customer(target_id)
+            help_text = (
+                f"📦 <b>TẠO ĐƠN HÀNG CHO KHÁCH {target_id}:</b>\n\n"
+                f"Bạn chỉ cần gửi tin nhắn theo cú pháp:\n\n"
+                f"<code>/don [SĐT] [Tiền] [Món] [Địa chỉ]</code>\n\n"
+                f"💡 <i>Ví dụ:</i>\n"
+                f"<code>/don 0901234567 300k 2 áo size L 123 Lê Lợi, Q1, HCM</code>"
+            )
+            return await send_telegram_message(help_text, chat_id=user_chat_id)
         elif data.startswith("pause_user_"):
             target_id = data.replace("pause_user_", "")
             from app.services.handover_service import pause_bot
@@ -852,6 +1060,10 @@ async def handle_telegram_update(update: dict) -> bool:
 
 <i>Hệ thống đã cập nhật số liệu này vào Báo cáo doanh thu hôm nay! 💪</i>"""
             return await send_telegram_message(msg_res, chat_id=user_chat_id)
+
+        # Nhận diện lệnh tạo đơn thủ công: /don, /order, /chot, /taodon, tạo đơn, chốt đơn
+        elif text_lower.startswith(("/don", "/order", "/chot", "/taodon", "tạo đơn thủ công", "tao don thu cong", "tạo đơn", "tao don", "chốt đơn", "chot don")):
+            return await handle_manual_order_command(text, user_chat_id)
 
         # Các trường hợp khác: hiển thị menu chính kèm bàn phím
         else:

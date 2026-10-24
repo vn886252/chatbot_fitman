@@ -533,6 +533,72 @@ async def generate_response(
             if "/static/products/bang_size.jpg" not in suggested_images:
                 suggested_images.append("/static/products/bang_size.jpg")
 
+    # QUY TẮC: Khi hỏi khách chọn mẫu / xem mẫu -> PHẢI gửi ảnh cho khách chọn, với điều kiện là CHƯA gửi ảnh sản phẩm lần nào
+    has_sent_product_photos = False
+    if customer_profile and customer_profile.get("has_sent_product_photos"):
+        has_sent_product_photos = True
+    elif messages:
+        for m in messages:
+            if m.get("role") == "assistant":
+                c_txt = str(m.get("content") or "").lower()
+                if any(k in c_txt for k in ["em gửi anh xem 2 mẫu", "em gửi anh xem mẫu", "gửi anh xem mẫu", "mẫu mới nhất"]):
+                    has_sent_product_photos = True
+                    break
+
+    is_asking_model_choice = any(k in reply_text.lower() for k in [
+        "chọn mẫu", "chon mau", "xem mẫu", "xem mau", "ưng mẫu nào", "ung mau nao",
+        "thích mẫu nào", "thich mau nao", "chọn được mẫu nào", "chon duoc mau nao",
+        "chọn thêm món", "chon them mon", "chọn thêm mẫu", "chon them mau", "mẫu nào chưa",
+        "mẫu nào không", "mau nao khong", "mẫu nào ko", "mau nao ko", "ưng mẫu"
+    ])
+
+    if is_asking_model_choice and not has_sent_product_photos and not suggested_images:
+        ad_models = customer_profile.get("ad_models") if customer_profile else None
+        if ad_models:
+            try:
+                from app.tools.business_rules import tim_anh_san_pham
+                for c in ad_models:
+                    res = tim_anh_san_pham(str(c))
+                    for img in res.get("image_urls", []):
+                        if img and img not in suggested_images:
+                            suggested_images.append(img)
+                    if len(suggested_images) >= 2:
+                        break
+            except Exception:
+                pass
+
+        if not suggested_images:
+            try:
+                from app.services.new_models_service import get_new_models
+                new_m = get_new_models()
+                for m in new_m[:2]:
+                    img = m.get("image_url")
+                    if img and img not in suggested_images:
+                        suggested_images.append(img)
+            except Exception:
+                pass
+
+        if not suggested_images:
+            suggested_images = ["/static/products/mau_moi_1.png", "/static/products/mau_moi_2.png"]
+        suggested_images = suggested_images[:2]
+
+        # Chuẩn hóa lại câu hỏi kết thúc để khớp với việc gửi ảnh
+        if any(k in reply_text.lower() for k in ["có muốn xem mẫu", "muốn xem mẫu", "chọn thêm món", "chọn thêm mẫu"]):
+            reply_text = re.sub(
+                r'(?i)(?:anh|chị|bạn)?\s*có muốn\s*(?:xem mẫu|chọn thêm)[^?!.\n]*[?!.]?(\s*💪)?',
+                'Em gửi anh xem 2 mẫu mới nhất bên em nha, anh xem qua ưng mẫu nào nhắn em nhé! 💪',
+                reply_text
+            ).strip()
+        elif any(k in reply_text.lower() for k in ["chọn được mẫu nào chưa", "chọn mẫu nào chưa", "ưng mẫu nào chưa", "chọn được mẫu nào ko", "chọn mẫu nào ko", "chọn mẫu nào không"]):
+            reply_text = re.sub(
+                r'(?i)(?:anh|chị|bạn)?\s*(?:đã\s*)?(?:chọn|ưng|thích)\s*(?:được\s*)?mẫu nào\s*(?:chưa|không|ko|nhỉ)[^?!.\n]*[?!.]?(\s*💪)?',
+                'Em gửi anh xem 2 mẫu mới nhất bên em nha, anh xem qua ưng mẫu nào nhắn em nhé! 💪',
+                reply_text
+            ).strip()
+
+        if "em gửi anh xem" not in reply_text.lower() and "gửi anh xem" not in reply_text.lower():
+            reply_text += "\nEm gửi anh xem 2 mẫu mới nhất bên em nha, anh xem qua ưng mẫu nào nhắn em nhé! 💪"
+
     follow_up_text = ""
 
     # TÁCH TIN NHẮN BÁO GIÁ COMBO:
@@ -616,6 +682,13 @@ async def generate_response(
     # Cập nhật lịch sử assistant message nếu có follow_up_text
     if follow_up_text and full_messages and full_messages[-1].get("role") == "assistant":
         full_messages[-1]["content"] = f"{reply_text}\n\n{follow_up_text}"
+
+    # Ghi nhận cờ đã gửi ảnh sản phẩm nếu đợt này bot quyết định gửi ảnh sản phẩm
+    if sender_id and any(not str(img).endswith("bang_size.jpg") for img in suggested_images):
+        try:
+            save_customer_profile(sender_id, has_sent_product_photos=True)
+        except Exception:
+            pass
 
     suggested_image = suggested_images[0] if suggested_images else None
 
