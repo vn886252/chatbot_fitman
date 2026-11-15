@@ -1,6 +1,7 @@
 import re
 import html
 import logging
+import time
 from typing import Optional, Dict, Any, List
 import httpx
 from app.config import settings
@@ -111,6 +112,60 @@ async def answer_callback_query(callback_query_id: str, text: Optional[str] = No
             return res.status_code == 200
     except Exception as e:
         logger.warning(f"Error answering callback query: {e}")
+        return False
+
+
+async def edit_telegram_message(
+    message_id: int,
+    text: str,
+    parse_mode: str = "HTML",
+    reply_markup: Optional[dict] = None,
+    chat_id: Optional[str] = None
+) -> bool:
+    """
+    Chỉnh sửa nội dung tin nhắn Telegram đã gửi (dùng khi bấm nút inline, tránh gửi lặp tin mới).
+    """
+    target_chat_id = str(chat_id or settings.TELEGRAM_CHAT_ID)
+    if not settings.TELEGRAM_BOT_TOKEN or not target_chat_id or not message_id:
+        return False
+
+    url = f"https://api.telegram.org/bot{settings.TELEGRAM_BOT_TOKEN}/editMessageText"
+    payload: Dict[str, Any] = {
+        "chat_id": target_chat_id,
+        "message_id": message_id,
+        "text": text,
+        "parse_mode": parse_mode,
+        "disable_web_page_preview": True
+    }
+    if reply_markup:
+        payload["reply_markup"] = reply_markup
+
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            res = await client.post(url, json=payload)
+            if res.status_code == 200:
+                logger.info(f"Telegram message {message_id} edited successfully.")
+                return True
+            elif "message is not modified" in res.text.lower():
+                # Nội dung giống hệt tin cũ (ví dụ bấm Làm mới nhưng chưa có đơn mới)
+                logger.info(f"Telegram message {message_id} not modified (already latest).")
+                return True
+            elif res.status_code == 400 and "can't parse entities" in res.text.lower():
+                plain_payload: Dict[str, Any] = {
+                    "chat_id": target_chat_id,
+                    "message_id": message_id,
+                    "text": re.sub(r'<[^>]+>', '', text),
+                    "disable_web_page_preview": True
+                }
+                if reply_markup:
+                    plain_payload["reply_markup"] = reply_markup
+                res_plain = await client.post(url, json=plain_payload)
+                return res_plain.status_code == 200 or "message is not modified" in res_plain.text.lower()
+            else:
+                logger.warning(f"Telegram editMessageText error {res.status_code}: {res.text}")
+                return False
+    except Exception as e:
+        logger.error(f"Exception editing Telegram message: {e}")
         return False
 
 
@@ -572,11 +627,18 @@ def format_period_report(summary: dict) -> str:
     return f"📊 <b>DOANH THU:</b> {rev_formatted}đ ({total_orders} đơn)"
 
 
-async def send_period_report(chat_id: Optional[str] = None, period_type: str = "today") -> bool:
-    """Gửi báo cáo doanh thu theo mốc thời gian kèm cụm nút bấm Inline."""
+async def send_period_report(chat_id: Optional[str] = None, period_type: str = "today", message_id: Optional[int] = None) -> bool:
+    """
+    Gửi hoặc chỉnh sửa báo cáo doanh thu theo mốc thời gian kèm cụm nút bấm Inline.
+    Nếu có message_id (từ callback query), sửa trực tiếp tin nhắn cũ thay vì gửi tin mới.
+    """
     target_chat_id = str(chat_id or settings.TELEGRAM_CHAT_ID)
     summary = get_period_summary(period_type)
     msg = format_period_report(summary)
+    if message_id:
+        edited = await edit_telegram_message(message_id, msg, reply_markup=INLINE_KEYBOARD, chat_id=target_chat_id)
+        if edited:
+            return True
     return await send_telegram_message(msg, reply_markup=INLINE_KEYBOARD, chat_id=target_chat_id)
 
 
@@ -834,15 +896,38 @@ async def handle_manual_order_command(text: str, user_chat_id: str) -> bool:
     return await send_telegram_message(resp_msg, chat_id=user_chat_id)
 
 
+_processed_updates: Dict[str, float] = {}
+_last_user_command: Dict[str, Dict[str, Any]] = {}
+
+
 async def handle_telegram_update(update: dict) -> bool:
     """
     Xử lý update từ Telegram: tin nhắn văn bản, lệnh gõ hoặc sự kiện click nút bấm (callback_query).
+    Tích hợp bộ lọc chống trùng lặp update_id và chống bấm đúp (double-tap) nút bấm.
     """
+    now_ts = time.time()
+
+    # 0. Chống xử lý trùng lặp update_id (nếu Telegram retry hoặc polling nhận lại)
+    up_id = update.get("update_id")
+    if up_id is not None:
+        up_str = str(up_id)
+        if up_str in _processed_updates:
+            logger.info(f"[Telegram] Suppressed duplicate update_id: {up_id}")
+            return True
+        _processed_updates[up_str] = now_ts
+        if len(_processed_updates) > 1000:
+            cutoff = now_ts - 300
+            for k in list(_processed_updates.keys()):
+                if _processed_updates[k] < cutoff:
+                    del _processed_updates[k]
+
     if "callback_query" in update:
         cb = update["callback_query"]
         cb_id = str(cb.get("id", ""))
         data = str(cb.get("data", ""))
         user_chat_id = str(cb.get("from", {}).get("id", "") or cb.get("message", {}).get("chat", {}).get("id", ""))
+        msg_obj = cb.get("message") or {}
+        msg_id = msg_obj.get("message_id")
 
         if cb_id:
             await answer_callback_query(cb_id)
@@ -853,13 +938,13 @@ async def handle_telegram_update(update: dict) -> bool:
             return False
 
         if data == "report_today":
-            return await send_period_report(user_chat_id, "today")
+            return await send_period_report(user_chat_id, "today", message_id=msg_id) if msg_id else await send_period_report(user_chat_id, "today")
         elif data == "report_week":
-            return await send_period_report(user_chat_id, "week")
+            return await send_period_report(user_chat_id, "week", message_id=msg_id) if msg_id else await send_period_report(user_chat_id, "week")
         elif data == "report_month":
-            return await send_period_report(user_chat_id, "month")
+            return await send_period_report(user_chat_id, "month", message_id=msg_id) if msg_id else await send_period_report(user_chat_id, "month")
         elif data == "report_refresh":
-            return await send_period_report(user_chat_id, "today")
+            return await send_period_report(user_chat_id, "today", message_id=msg_id) if msg_id else await send_period_report(user_chat_id, "today")
         elif data.startswith("create_order_"):
             target_id = data.replace("create_order_", "")
             from app.services.handover_service import record_last_customer
@@ -909,6 +994,14 @@ async def handle_telegram_update(update: dict) -> bool:
                 )
                 await send_telegram_message(reply_txt, chat_id=user_chat_id)
             return False
+
+        # Chống double-tap: Nếu cùng admin gửi cùng một text command trong vòng 1.5 giây
+        if text:
+            last_cmd = _last_user_command.get(user_chat_id)
+            if last_cmd and last_cmd.get("text") == text and (now_ts - last_cmd.get("time", 0)) < 1.5:
+                logger.info(f"[Telegram] Suppressed rapid double-tap command '{text}' from {user_chat_id}")
+                return True
+            _last_user_command[user_chat_id] = {"text": text, "time": now_ts}
 
         # 1. Xử lý khi admin gửi ẢNH để thêm mẫu mới
         if "photo" in msg:

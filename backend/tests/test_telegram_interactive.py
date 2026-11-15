@@ -387,3 +387,102 @@ async def test_manual_order_missing_info():
         assert "THIẾU THÔNG TIN ĐƠN HÀNG" in mock_send.call_args[0][0]
 
 
+@pytest.mark.asyncio
+async def test_duplicate_update_and_double_tap_suppressed():
+    """Kiểm tra cơ chế chặn trùng lặp update_id và chống double tap."""
+    from app.services.telegram_service import handle_telegram_update
+    admin_id = settings.TELEGRAM_CHAT_ID
+
+    with patch("app.services.telegram_service.send_period_report", new_callable=AsyncMock) as mock_report:
+        mock_report.return_value = True
+
+        # 1. Update với update_id = 99999
+        up1 = {
+            "update_id": 99999,
+            "message": {
+                "chat": {"id": admin_id},
+                "text": "hôm nay"
+            }
+        }
+        res1 = await handle_telegram_update(up1)
+        assert res1 is True
+        assert mock_report.call_count == 1
+
+        # 2. Cùng update_id = 99999 gửi lại (retry) -> phải bị chặn, không gọi report lần 2
+        res2 = await handle_telegram_update(up1)
+        assert res2 is True
+        assert mock_report.call_count == 1
+
+        # 3. Double-tap: update mới với update_id khác nhưng cùng text gửi ngay trong vòng 1 giây
+        up2 = {
+            "update_id": 100000,
+            "message": {
+                "chat": {"id": admin_id},
+                "text": "hôm nay"
+            }
+        }
+        res3 = await handle_telegram_update(up2)
+        assert res3 is True
+        # Vẫn chỉ là 1 lần gọi vì bị double-tap suppression chặn
+        assert mock_report.call_count == 1
+
+
+@pytest.mark.asyncio
+async def test_inline_callback_edits_existing_message():
+    """Kiểm tra khi click inline button có message_id thì edit tin nhắn cũ thay vì gửi tin mới."""
+    from app.services.telegram_service import handle_telegram_update
+    admin_id = settings.TELEGRAM_CHAT_ID
+
+    with patch("app.services.telegram_service.answer_callback_query", new_callable=AsyncMock) as mock_ans, \
+         patch("app.services.telegram_service.edit_telegram_message", new_callable=AsyncMock) as mock_edit, \
+         patch("app.services.telegram_service.send_telegram_message", new_callable=AsyncMock) as mock_send:
+        mock_ans.return_value = True
+        mock_edit.return_value = True
+
+        up_cb = {
+            "update_id": 200001,
+            "callback_query": {
+                "id": "cb_refresh_1",
+                "data": "report_refresh",
+                "from": {"id": admin_id},
+                "message": {
+                    "chat": {"id": admin_id},
+                    "message_id": 8888
+                }
+            }
+        }
+        res = await handle_telegram_update(up_cb)
+        assert res is True
+        mock_ans.assert_called_once_with("cb_refresh_1")
+        mock_edit.assert_called_once()
+        assert mock_edit.call_args[0][0] == 8888
+        mock_send.assert_not_called()
+
+
+def test_trigger_daily_report_prevents_duplicate(tmp_path):
+    """Kiểm tra /api/report/today không gửi trùng nếu hôm nay đã gửi."""
+    tracker_file = tmp_path / "last_report_test.json"
+    with patch("app.main.REPORT_TRACKER_FILE", tracker_file), \
+         patch("app.main.send_daily_revenue_report", new_callable=AsyncMock) as mock_report:
+        mock_report.return_value = True
+        client = TestClient(app)
+
+        # Lần 1: gửi thành công
+        res1 = client.get("/api/report/today")
+        assert res1.status_code == 200
+        assert res1.json()["status"] == "ok"
+        assert mock_report.call_count == 1
+
+        # Lần 2: gọi lại mà không có force=true -> không gửi lặp
+        res2 = client.get("/api/report/today")
+        assert res2.status_code == 200
+        assert "đã được gửi trước đó rồi" in res2.json()["message"]
+        assert mock_report.call_count == 1
+
+        # Lần 3: gọi với force=true -> cho phép gửi lại
+        res3 = client.get("/api/report/today?force=true")
+        assert res3.status_code == 200
+        assert mock_report.call_count == 2
+
+
+

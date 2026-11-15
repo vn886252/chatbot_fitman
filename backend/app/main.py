@@ -61,13 +61,13 @@ async def _daily_report_scheduler():
             now = datetime.now(timezone.utc).astimezone(ICT)
             today_str = now.strftime("%Y-%m-%d")
 
-            # Nếu đã đến hoặc qua target_hour và ngày hôm nay chưa báo cáo
-            if now.hour >= target_hour and last_reported_date != today_str:
+            # Nếu đã đến hoặc qua target_hour và ngày hôm nay chưa báo cáo (kiểm tra cả memory và file)
+            if now.hour >= target_hour and last_reported_date != today_str and _get_last_reported_date() != today_str:
                 logger.info(f"Triggering automatic daily revenue report for {today_str} (hour: {now.hour}, target: {target_hour})...")
-                sent = await send_daily_revenue_report(today_str)
-                if sent:
-                    _set_last_reported_date(today_str)
-                    last_reported_date = today_str
+                # Đánh dấu ngày báo cáo ngay trước khi gửi để tránh race condition bắn 2 lần
+                _set_last_reported_date(today_str)
+                last_reported_date = today_str
+                await send_daily_revenue_report(today_str)
             await asyncio.sleep(30)
         except asyncio.CancelledError:
             break
@@ -435,9 +435,20 @@ async def chat(request: ChatRequest):
     return result
 
 @app.api_route("/api/report/today", methods=["GET", "POST"])
-async def trigger_daily_report():
+async def trigger_daily_report(force: bool = False):
     """Endpoint thủ công để kích hoạt gửi báo cáo doanh thu hôm nay qua Telegram."""
-    sent = await send_daily_revenue_report()
+    now = datetime.now(timezone.utc).astimezone(ICT)
+    today_str = now.strftime("%Y-%m-%d")
+
+    # Nếu không phải force và hôm nay đã báo cáo rồi thì không gửi lặp
+    if not force and _get_last_reported_date() == today_str:
+        return {
+            "status": "ok",
+            "message": f"Báo cáo doanh thu ngày {today_str} đã được gửi trước đó rồi (thêm ?force=true nếu muốn gửi lại)."
+        }
+
+    _set_last_reported_date(today_str)
+    sent = await send_daily_revenue_report(today_str)
     return {
         "status": "ok" if sent else "error",
         "message": "Báo cáo doanh thu hôm nay đã được gửi qua Telegram!" if sent else "Gửi báo cáo qua Telegram thất bại, vui lòng kiểm tra cấu hình!"
