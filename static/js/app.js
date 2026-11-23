@@ -18,6 +18,32 @@ document.addEventListener('DOMContentLoaded', () => {
    =================================================================== */
 const PRODUCTS = [
   {
+    "id": "B1",
+    "name": "Áo Thun Gym Oversize Fitman Basketball Championship Đen",
+    "category": "cbum",
+    "categoryName": "CBUM",
+    "price": 150000,
+    "fabric": "Cotton 100% 260GSM",
+    "color": "Đen",
+    "image": "/static/products/items/ao-gym-mau-moi-b1-basketball-den.jpg",
+    "badge": "BÓNG RỔ",
+    "badgeColor": "orange",
+    "desc": "Tone Đen, lưng in 4 ô động tác bóng rổ màu cam nổi bật, tinh thần thi đấu bùng nổ."
+  },
+  {
+    "id": "B2",
+    "name": "Áo Thun Gym Oversize Fitman Basketball Championship Trắng",
+    "category": "cbum",
+    "categoryName": "CBUM",
+    "price": 150000,
+    "fabric": "Cotton 100% 260GSM",
+    "color": "Trắng",
+    "image": "/static/products/items/ao-gym-mau-moi-b2-basketball-trang.jpg",
+    "badge": "BÓNG RỔ",
+    "badgeColor": "orange",
+    "desc": "Tone Trắng thể thao, lưng in 4 ô động tác thi đấu bóng rổ cam cháy năng động, form rộng thoáng mát."
+  },
+  {
     "id": "R1",
     "name": "Áo Thun Gym Oversize Fitman RAW From The Ground Up Đen",
     "category": "raw",
@@ -159,32 +185,6 @@ const PRODUCTS = [
     "badge": "YOUNGLA",
     "badgeColor": "dark",
     "desc": "Mẫu YoungLA x Tom & Jerry tone Kem Be vintage, vải mềm mịn dày dặn đứng form cực chuẩn khi diện đi chơi hoặc đi gym."
-  },
-  {
-    "id": "B1",
-    "name": "Áo Thun Gym Oversize Fitman Basketball Championship Đen",
-    "category": "cbum",
-    "categoryName": "CBUM",
-    "price": 150000,
-    "fabric": "Cotton 100% 260GSM",
-    "color": "Đen",
-    "image": "/static/products/items/ao-gym-mau-moi-b1-basketball-den.jpg",
-    "badge": "CBUM",
-    "badgeColor": "dark",
-    "desc": "Tone Đen, lưng in 4 ô động tác bóng rổ màu cam nổi bật, tinh thần thi đấu bùng nổ."
-  },
-  {
-    "id": "B2",
-    "name": "Áo Thun Gym Oversize Fitman Basketball Championship Trắng",
-    "category": "cbum",
-    "categoryName": "CBUM",
-    "price": 150000,
-    "fabric": "Cotton 100% 260GSM",
-    "color": "Trắng",
-    "image": "/static/products/items/ao-gym-mau-moi-b2-basketball-trang.jpg",
-    "badge": "CBUM",
-    "badgeColor": "dark",
-    "desc": "Tone Trắng thể thao, lưng in 4 ô động tác thi đấu bóng rổ cam cháy năng động, form rộng thoáng mát."
   },
   {
     "id": "CBUM_01",

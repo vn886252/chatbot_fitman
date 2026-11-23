@@ -1,5 +1,35 @@
 [
   {
+    "id": "B1",
+    "name": "Áo Thun Gym Oversize Fitman Basketball Championship Đen",
+    "category": "cbum",
+    "category_name": "CBUM",
+    "price": 150000,
+    "fabric": "Cotton 100% 260GSM",
+    "color": "Đen",
+    "badge": "BÓNG RỔ",
+    "badge_color": "orange",
+    "desc": "Tone Đen, lưng in 4 ô động tác bóng rổ màu cam nổi bật, tinh thần thi đấu bùng nổ.",
+    "source": "products/b1b2/11.png",
+    "dest": "ao-gym-mau-moi-b1-basketball-den.jpg",
+    "image": "/static/products/items/ao-gym-mau-moi-b1-basketball-den.jpg"
+  },
+  {
+    "id": "B2",
+    "name": "Áo Thun Gym Oversize Fitman Basketball Championship Trắng",
+    "category": "cbum",
+    "category_name": "CBUM",
+    "price": 150000,
+    "fabric": "Cotton 100% 260GSM",
+    "color": "Trắng",
+    "badge": "BÓNG RỔ",
+    "badge_color": "orange",
+    "desc": "Tone Trắng thể thao, lưng in 4 ô động tác thi đấu bóng rổ cam cháy năng động, form rộng thoáng mát.",
+    "source": "products/b1b2/14.png",
+    "dest": "ao-gym-mau-moi-b2-basketball-trang.jpg",
+    "image": "/static/products/items/ao-gym-mau-moi-b2-basketball-trang.jpg"
+  },
+  {
     "id": "R1",
     "name": "Áo Thun Gym Oversize Fitman RAW From The Ground Up Đen",
     "category": "raw",
@@ -163,36 +193,6 @@
     "source": "products/yl/ao BE tom and jerry.png",
     "dest": "ao-gym-mau-moi-yl12-youngla-tom-jerry-kem.jpg",
     "image": "/static/products/items/ao-gym-mau-moi-yl12-youngla-tom-jerry-kem.jpg"
-  },
-  {
-    "id": "B1",
-    "name": "Áo Thun Gym Oversize Fitman Basketball Championship Đen",
-    "category": "cbum",
-    "category_name": "CBUM",
-    "price": 150000,
-    "fabric": "Cotton 100% 260GSM",
-    "color": "Đen",
-    "badge": "CBUM",
-    "badge_color": "dark",
-    "desc": "Tone Đen, lưng in 4 ô động tác bóng rổ màu cam nổi bật, tinh thần thi đấu bùng nổ.",
-    "source": "products/b1b2/11.png",
-    "dest": "ao-gym-mau-moi-b1-basketball-den.jpg",
-    "image": "/static/products/items/ao-gym-mau-moi-b1-basketball-den.jpg"
-  },
-  {
-    "id": "B2",
-    "name": "Áo Thun Gym Oversize Fitman Basketball Championship Trắng",
-    "category": "cbum",
-    "category_name": "CBUM",
-    "price": 150000,
-    "fabric": "Cotton 100% 260GSM",
-    "color": "Trắng",
-    "badge": "CBUM",
-    "badge_color": "dark",
-    "desc": "Tone Trắng thể thao, lưng in 4 ô động tác thi đấu bóng rổ cam cháy năng động, form rộng thoáng mát.",
-    "source": "products/b1b2/14.png",
-    "dest": "ao-gym-mau-moi-b2-basketball-trang.jpg",
-    "image": "/static/products/items/ao-gym-mau-moi-b2-basketball-trang.jpg"
   },
   {
     "id": "CBUM_01",
